@@ -17,4 +17,6 @@ print(f"Running on: {device}")
 
 nerf_data = NeRF_Data_Loader()
 nerf_data.debug_information()
-nerf_data.testimg_show()
+# nerf_data.testimg_show()
+# nerf_data.debug_cam_directions_origins()
+nerf_data.debug_rays_generation(device)
