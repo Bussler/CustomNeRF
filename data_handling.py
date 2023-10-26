@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from sampling import NeRF_Sampler
+
 
 class NeRF_Data_Loader:
     testimg_idx = 101
@@ -100,7 +102,14 @@ class NeRF_Data_Loader:
         ax.set_zlabel("z")
         plt.show()
 
-    def debug_rays_generation(self, device: torch.device):
+    def debug_rays_generation(self, device: torch.device, sampler: NeRF_Sampler):
+        """Testfunction. Generate Ray origin positions and direction vector for a single testimage.
+        Then generate sample points along the rays.
+
+        Args:
+            device (torch.device): _description_
+            sampler (NeRF_Sampler): _description_
+        """
         testimg, testpose = self.testimg_show()
         testimg = torch.from_numpy(self.data["images"][self.testimg_idx]).to(device)
         testpose = torch.from_numpy(self.data["poses"][self.testimg_idx]).to(device)
@@ -117,3 +126,34 @@ class NeRF_Data_Loader:
         print(ray_direction.shape)
         print(ray_direction[self.height // 2, self.width // 2, :])
         print("")
+
+        # Draw stratified samples from example
+        rays_o = ray_origin.view([-1, 3])
+        rays_d = ray_direction.view([-1, 3])
+        n_samples = 8
+        perturb = True
+        inverse_depth = False
+        with torch.no_grad():
+            pts, z_vals = sampler.sample(
+                rays_o, rays_d, self.near, self.far, n_samples, perturb=perturb, inverse_depth=inverse_depth
+            )
+
+        print("Input Points")
+        print(pts.shape)
+        print("")
+        print("Distances Along Ray")
+        print(z_vals.shape)
+
+        y_vals = torch.zeros_like(z_vals)
+
+        _, z_vals_unperturbed = sampler.sample(
+            rays_o, rays_d, self.near, self.far, n_samples, perturb=False, inverse_depth=inverse_depth
+        )
+        plt.plot(z_vals_unperturbed[0].cpu().numpy(), 1 + y_vals[0].cpu().numpy(), "b-o")
+        plt.plot(z_vals[0].cpu().numpy(), y_vals[0].cpu().numpy(), "r-o")
+        plt.ylim([-1, 2])
+        plt.title("Stratified Sampling (blue) with Perturbation (red)")
+        ax = plt.gca()
+        ax.axes.yaxis.set_visible(False)
+        plt.grid(True)
+        plt.show()
