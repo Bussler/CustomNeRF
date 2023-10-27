@@ -61,7 +61,12 @@ class NeRF_Data_Loader:
         )
         i, j = i.transpose(-1, -2), j.transpose(-1, -2)
         directions = torch.stack(
-            [(i - width * 0.5) / focal_length, -(j - height * 0.5) / focal_length, -torch.ones_like(i)], dim=-1
+            [
+                (i - width * 0.5) / focal_length,
+                -(j - height * 0.5) / focal_length,
+                -torch.ones_like(i),
+            ],
+            dim=-1,
         ).to(c2w)
 
         # Apply camera pose to directions
@@ -135,7 +140,13 @@ class NeRF_Data_Loader:
         inverse_depth = False
         with torch.no_grad():
             pts, z_vals = sampler.sample(
-                rays_o, rays_d, self.near, self.far, n_samples, perturb=perturb, inverse_depth=inverse_depth
+                rays_o,
+                rays_d,
+                self.near,
+                self.far,
+                n_samples,
+                perturb=perturb,
+                inverse_depth=inverse_depth,
             )
 
         print("Input Points")
@@ -147,7 +158,13 @@ class NeRF_Data_Loader:
         y_vals = torch.zeros_like(z_vals)
 
         _, z_vals_unperturbed = sampler.sample(
-            rays_o, rays_d, self.near, self.far, n_samples, perturb=False, inverse_depth=inverse_depth
+            rays_o,
+            rays_d,
+            self.near,
+            self.far,
+            n_samples,
+            perturb=False,
+            inverse_depth=inverse_depth,
         )
         plt.plot(z_vals_unperturbed[0].cpu().numpy(), 1 + y_vals[0].cpu().numpy(), "b-o")
         plt.plot(z_vals[0].cpu().numpy(), y_vals[0].cpu().numpy(), "r-o")

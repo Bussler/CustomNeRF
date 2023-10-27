@@ -115,7 +115,11 @@ class NeRF_Hierarchical_Sampler(NeRF_Sampler):
         return pts, z_vals_combined, new_z_samples
 
     def sample_pdf(
-        self, bins: torch.Tensor, weights: torch.Tensor, n_samples: int, perturb: bool = False
+        self,
+        bins: torch.Tensor,
+        weights: torch.Tensor,
+        n_samples: int,
+        perturb: bool = False,
     ) -> torch.Tensor:
         r"""
         Apply inverse transform sampling to a weighted set of points.
