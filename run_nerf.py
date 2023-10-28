@@ -7,9 +7,9 @@ import torch
 from mpl_toolkits.mplot3d import axes3d
 from tqdm import trange
 
-from data_handling import NeRF_Data_Loader
-from feature_embedding import PositionalEmbedding
-from sampling import NeRF_Stratified_Sampler
+from model.feature_embedding import PositionalEmbedding
+from volume_handling.data_handling import NeRF_Data_Loader
+from volume_handling.sampling import NeRF_Stratified_Sampler
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,9 +20,7 @@ nerf_data = NeRF_Data_Loader()
 nerf_sampler = NeRF_Stratified_Sampler()
 
 nerf_data.debug_information()
-# nerf_data.testimg_show()
-# nerf_data.debug_cam_directions_origins()
-nerf_data.debug_rays_generation(device, nerf_sampler)
+# nerf_data.debug_rays_generation(device, nerf_sampler)
 
 pos_encoder = PositionalEmbedding(n_freqs=10, input_dim=3)
 pass
