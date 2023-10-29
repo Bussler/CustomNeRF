@@ -7,6 +7,7 @@ import torch
 from model.feature_embedding import PositionalEmbedding
 from model.NeRF import NeRF
 from volume_handling.data_handling import NeRF_Data_Loader
+from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Stratified_Sampler
 
 nerf_data_loader = NeRF_Data_Loader("data/tiny_nerf_data.npz")
@@ -147,7 +148,20 @@ def debug_NeRF_model() -> Tuple[int, int, list[int]]:
 
 
 def debug_NeRF_renderer():
-    # TODO
+    # TODO unsqueeze to correct numbers: [n_rays, n_samples]
+    raw = torch.tensor([1.0, 1.0, 1.0, 0.5]).unsqueeze(0)
+    z_vals = torch.tensor(torch.linspace(2.0, 6.0, 8)).unsqueeze(0)
+    ray_dir = torch.tensor(
+        [
+            1.0,
+            1.0,
+            1.0,
+        ]
+    ).unsqueeze(0)
+
+    renderer = Differentiable_Volume_Renderer()
+    renderer.raw_to_outputs(raw, z_vals, ray_dir)
+
     pass
 
 
@@ -200,4 +214,5 @@ if __name__ == "__main__":
     # debug_cam_directions_origins(True)
     # debug_rays_generation(True)
 
-    debug_NeRF_model()
+    # debug_NeRF_model()
+    debug_NeRF_renderer()

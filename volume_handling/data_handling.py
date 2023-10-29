@@ -1,12 +1,22 @@
-from typing import Tuple
+from typing import Callable, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from model.feature_embedding import Embedder, PositionalEmbedding
+
+from .sampling import NeRF_Sampler, NeRF_Stratified_Sampler
+
 
 class NeRF_Data_Loader:
-    def __init__(self, data_path="data/tiny_nerf_data.npz") -> None:
+    def __init__(
+        self,
+        data_path="data/tiny_nerf_data.npz",
+        point_sampler: NeRF_Sampler = None,
+        pos_embedder: Embedder = None,
+        viewdir_embedder: Embedder = None,
+    ) -> None:
         # load data images
         self.data = np.load(data_path)
         self.images = self.data["images"]
@@ -20,6 +30,23 @@ class NeRF_Data_Loader:
         # convert 4*4 camera pose mat into origin camera pos + dir vector to indicate where the camera is pointing
         self.cam_dirs = np.stack([np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self.poses])
         self.cam_origins = self.poses[:, :3, -1]
+
+        # set class for sampling points from volume
+        if point_sampler is not None:
+            self.point_sampler = point_sampler
+        else:
+            self.point_sampler = NeRF_Stratified_Sampler()
+
+        # set high frequency embedders for input to network
+        if pos_embedder is not None:
+            self.pos_embedder = pos_embedder
+        else:
+            self.pos_embedder = PositionalEmbedding()
+
+        if viewdir_embedder is not None:
+            self.viewdir_embedder = viewdir_embedder
+        else:
+            self.viewdir_embedder = PositionalEmbedding()
 
     def data_to_device(self, device: torch.device, n_training: int = 100):
         """move data (images, poses, focal) to torch device (cpu or cuda)
@@ -71,6 +98,61 @@ class NeRF_Data_Loader:
         # Origin is same for all pixels/ directions (the optical center)
         rays_o = c2w[:3, -1].expand(rays_d.shape)
         return rays_o, rays_d
+
+    def get_chunks(self, inputs: torch.Tensor, chunksize: int = 2**15) -> List[torch.Tensor]:
+        """Helper function to divide an input into chunks.
+
+        Args:
+            inputs (torch.Tensor): input to chunk (either positions or view_dirs)
+            chunksize (int, optional): size of the chunks. Defaults to 2**15.
+
+        Returns:
+            List[torch.Tensor]: list of chunks
+        """
+        return [inputs[i : i + chunksize] for i in range(0, inputs.shape[0], chunksize)]
+
+    def prepare_position_chunks(
+        self, points: torch.Tensor, encoding_function: Embedder, chunksize: int = 2**15
+    ) -> List[torch.Tensor]:
+        """Feature-Encode and chunkify sampled points to prepare for NeRF model.
+
+        Args:
+            points (torch.Tensor): sampled input points
+            encoding_function (Embedder), torch.Tensor]): frequency embedder
+            chunksize (int, optional): size of the chunks. Defaults to 2**15.
+
+        Returns:
+            List[torch.Tensor]: list of chunks
+        """
+        points = points.reshape((-1, 3))
+        points = encoding_function(points)
+        points = self.get_chunks(points, chunksize=chunksize)
+        return points
+
+    def prepare_viewdirs_chunks(
+        self,
+        points: torch.Tensor,
+        rays_d: torch.Tensor,
+        encoding_function: Embedder,
+        chunksize: int = 2**15,
+    ) -> List[torch.Tensor]:
+        """Feature-Encode and chunkify viewdirs to prepare for NeRF model.
+
+        Args:
+            points (torch.Tensor): sampled input points as reference for tensor size
+            rays_d (torch.Tensor): sampled view directions
+            encoding_function (Embedder): frequency embedder
+            chunksize (int, optional): size of the chunks. Defaults to 2**15.
+
+        Returns:
+            List[torch.Tensor]: list of chunks
+        """
+        # Prepare the viewdirs
+        viewdirs = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
+        viewdirs = viewdirs[:, None, ...].expand(points.shape).reshape((-1, 3))
+        viewdirs = encoding_function(viewdirs)
+        viewdirs = self.get_chunks(viewdirs, chunksize=chunksize)
+        return viewdirs
 
     def debug_information(self) -> Tuple[int, Tuple[int, int, int, int], Tuple[int, int], float]:
         print(f"Num images: {self.images.shape[0]}")
