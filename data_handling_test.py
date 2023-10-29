@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from model.feature_embedding import PositionalEmbedding
+from model.NeRF import NeRF
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.sampling import NeRF_Stratified_Sampler
 
@@ -122,6 +124,33 @@ def debug_rays_generation(
     return (ray_origin.shape, ray_slice, ray_direction.shape, raydirection_slice, pts.shape, z_vals.shape)
 
 
+def debug_NeRF_model() -> Tuple[int, int, list[int]]:
+    tensor_pos = torch.tensor([1.0, 1.0, 1.0])
+    tensor_dir = torch.tensor([1.0, 1.0, 1.0])
+
+    # TODO test with small input (xyz, 3Vec: dir)
+    pos_encoder = PositionalEmbedding(n_freqs=10, input_dim=3)
+    vdir_encoder = PositionalEmbedding(n_freqs=4, input_dim=3)
+
+    d_pos = pos_encoder.out_dim
+    d_vdir = vdir_encoder.out_dim
+
+    tensor_pos_encoded = pos_encoder(tensor_pos).unsqueeze(0)
+    tensor_vdir_encoded = vdir_encoder(tensor_dir).unsqueeze(0)
+
+    nerf_model = NeRF(d_input_pos=d_pos, d_viewdirs=d_vdir)
+    result = nerf_model(tensor_pos_encoded, tensor_vdir_encoded)
+
+    d_result = list(result.shape)
+
+    return d_pos, d_vdir, d_result
+
+
+def debug_NeRF_renderer():
+    # TODO
+    pass
+
+
 def test_basic_image_information():
     num_img, img_shape, pose_shape, focal = nerf_data_loader.debug_information()
     assert num_img == 106
@@ -159,7 +188,16 @@ def test_rays_generation():
     assert list(z_vals_shape) == [10000, 8]
 
 
+def test_NeRF_model():
+    d_pos, d_vdir, d_result = debug_NeRF_model()
+    assert d_pos == 60
+    assert d_vdir == 24
+    assert d_result == [1, 4]
+
+
 if __name__ == "__main__":
-    debug_testimg_show(True)
-    debug_cam_directions_origins(True)
-    debug_rays_generation(True)
+    # debug_testimg_show(True)
+    # debug_cam_directions_origins(True)
+    # debug_rays_generation(True)
+
+    debug_NeRF_model()

@@ -64,7 +64,7 @@ class NeRF_Stratified_Sampler(NeRF_Sampler):
             t_rand = torch.rand([n_samples], device=z_vals.device)
             z_vals = lower + (upper - lower) * t_rand
 
-        # Generate the 8 generated depth values for all rays
+        # Expand the n_samples depth values to all rays
         z_vals = z_vals.expand(list(rays_o.shape[:-1]) + [n_samples])
 
         # Generate Samplepoints: Apply scale from `rays_d` and offset from `rays_o` to distance offsets along ray

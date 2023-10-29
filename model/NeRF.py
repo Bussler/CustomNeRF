@@ -3,8 +3,9 @@ from typing import Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from RadianceFieldEncoder import RadianceFieldEncoder
 from torch import nn
+
+from .RadianceFieldEncoder import RadianceFieldEncoder
 
 
 class NeRF(RadianceFieldEncoder):
@@ -56,11 +57,11 @@ class NeRF(RadianceFieldEncoder):
             # If no viewdirs, use simpler output
             self.output = nn.Linear(d_Weights, 4)
 
-    def forward(self, position: torch.Tensor, view_dirs: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, view_dirs: Optional[torch.Tensor] = None) -> torch.Tensor:
         """Apply forward pass through NeRF nw, generates rgbo from xyz and view direction.
 
         Args:
-            position (torch.Tensor): (x,y,z) position vector of sampled points.
+            x (torch.Tensor): (x,y,z) position vector of sampled points.
             view_dirs (Optional[torch.Tensor], optional): view direction from generating rays. Defaults to None.
 
         Returns:
