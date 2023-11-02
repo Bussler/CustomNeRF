@@ -5,8 +5,19 @@ import torch
 
 
 class NeRF_Sampler(ABC):
-    def __init__(self) -> None:
-        pass
+    def __init__(
+        self,
+        n_samples: int,
+        perturb: Optional[bool] = True,
+    ) -> None:
+        """Abstract class for sampler to generate point (position) values along a ray
+
+        Args:
+            n_samples (int): How many points to sample along each ray. Influences the space integration along the ray
+            perturb (Optional[bool], optional): Determines whether to sample points uniformly from each bin or to simply use the bin center as the point. Defaults to True.
+        """
+        self.n_samples = n_samples
+        self.perturb = perturb
 
     @abstractmethod
     def sample(self, *args) -> None:
@@ -20,15 +31,30 @@ class NeRF_Stratified_Sampler(NeRF_Sampler):
         NeRF_Sampler (_type_): _description_
     """
 
-    def sample(
+    def __init__(
         self,
-        rays_o: torch.Tensor,
-        rays_d: torch.Tensor,
         near: float,
         far: float,
         n_samples: int,
         perturb: Optional[bool] = True,
         inverse_depth: bool = False,
+    ) -> None:
+        """Sampler for broad, scene structure focused NeRF
+
+        Args:
+            near (float): near plane z value
+            far (float): far plane z value
+            inverse_depth (bool, optional): _description_. Defaults to False.
+        """
+        super().__init__(n_samples, perturb)
+        self.near = near
+        self.far = far
+        self.inverse_depth = inverse_depth
+
+    def sample(
+        self,
+        rays_o: torch.Tensor,
+        rays_d: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Sample along ray from regularly-spaced bins.
         Divide space into regular sized bins and sample uniformly from each bin.
@@ -37,35 +63,30 @@ class NeRF_Stratified_Sampler(NeRF_Sampler):
         Args:
             rays_o (torch.Tensor): origin position of rays
             rays_d (torch.Tensor): direction vector of rays
-            near (float): near plane z value
-            far (float): far plane z value
-            n_samples (int): How many points to sample along each ray. Influences the space integration along the ray
-            perturb (Optional[bool], optional): Determines whether to sample points uniformly from each bin or to simply use the bin center as the point. Defaults to True.
-            inverse_depth (bool, optional): _description_. Defaults to False.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: xyz for all sampled points along each ray; distance along ray of each point
         """
 
         # Grab samples for space integration along ray
-        t_vals = torch.linspace(0.0, 1.0, n_samples, device=rays_o.device)
-        if not inverse_depth:
+        t_vals = torch.linspace(0.0, 1.0, self.n_samples, device=rays_o.device)
+        if not self.inverse_depth:
             # Generate depth values. Sample linearly between `near` and `far`
-            z_vals = near * (1.0 - t_vals) + far * (t_vals)
+            z_vals = self.near * (1.0 - t_vals) + self.far * (t_vals)
         else:
             # Generate depth values. Sample linearly in inverse depth (disparity) (back to front)
-            z_vals = 1.0 / (1.0 / near * (1.0 - t_vals) + 1.0 / far * (t_vals))
+            z_vals = 1.0 / (1.0 / self.near * (1.0 - t_vals) + 1.0 / self.far * (t_vals))
 
         # Draw uniform samples from bins along ray
-        if perturb:
+        if self.perturb:
             mids = 0.5 * (z_vals[1:] + z_vals[:-1])
             upper = torch.concat([mids, z_vals[-1:]], dim=-1)
             lower = torch.concat([z_vals[:1], mids], dim=-1)
-            t_rand = torch.rand([n_samples], device=z_vals.device)
+            t_rand = torch.rand([self.n_samples], device=z_vals.device)
             z_vals = lower + (upper - lower) * t_rand
 
         # Expand the n_samples depth values to all rays
-        z_vals = z_vals.expand(list(rays_o.shape[:-1]) + [n_samples])
+        z_vals = z_vals.expand(list(rays_o.shape[:-1]) + [self.n_samples])
 
         # Generate Samplepoints: Apply scale from `rays_d` and offset from `rays_o` to distance offsets along ray
         # pts: (width * height, n_samples, 3)
@@ -80,14 +101,19 @@ class NeRF_Hierarchical_Sampler(NeRF_Sampler):
         NeRF_Sampler (_type_): _description_
     """
 
+    def __init__(
+        self,
+        n_samples: int,
+        perturb: bool = False,
+    ) -> None:
+        super().__init__(n_samples, perturb)
+
     def sample(
         self,
         rays_o: torch.Tensor,
         rays_d: torch.Tensor,
         z_vals: torch.Tensor,
         weights: torch.Tensor,
-        n_samples: int,
-        perturb: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Apply hierarchical sampling to the rays.
         NeRF uses two MLPs for scene representaion: Coarse for broad structure, Fine for details.
@@ -104,7 +130,7 @@ class NeRF_Hierarchical_Sampler(NeRF_Sampler):
 
         # Draw samples from PDF using z_vals as bins and weights as probabilities.
         z_vals_mid = 0.5 * (z_vals[..., 1:] + z_vals[..., :-1])
-        new_z_samples = self.sample_pdf(z_vals_mid, weights[..., 1:-1], n_samples, perturb=perturb)
+        new_z_samples = self.sample_pdf(z_vals_mid, weights[..., 1:-1], self.n_samples, perturb=self.perturb)
         new_z_samples = new_z_samples.detach()
 
         # Resample points from ray based on PDF.

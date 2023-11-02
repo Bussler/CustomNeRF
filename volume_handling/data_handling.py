@@ -41,12 +41,12 @@ class NeRF_Data_Loader:
         if pos_embedder is not None:
             self.pos_embedder = pos_embedder
         else:
-            self.pos_embedder = PositionalEmbedding()
+            self.pos_embedder = PositionalEmbedding(n_freqs=10, input_dim=3)
 
         if viewdir_embedder is not None:
             self.viewdir_embedder = viewdir_embedder
         else:
-            self.viewdir_embedder = PositionalEmbedding()
+            self.viewdir_embedder = PositionalEmbedding(n_freqs=4, input_dim=3)
 
     def data_to_device(self, device: torch.device, n_training: int = 100):
         """move data (images, poses, focal) to torch device (cpu or cuda)
@@ -112,7 +112,7 @@ class NeRF_Data_Loader:
         return [inputs[i : i + chunksize] for i in range(0, inputs.shape[0], chunksize)]
 
     def prepare_position_chunks(
-        self, points: torch.Tensor, encoding_function: Embedder, chunksize: int = 2**15
+        self, points: torch.Tensor, encoding_function: Embedder = None, chunksize: int = 2**15
     ) -> List[torch.Tensor]:
         """Feature-Encode and chunkify sampled points to prepare for NeRF model.
 
@@ -125,7 +125,12 @@ class NeRF_Data_Loader:
             List[torch.Tensor]: list of chunks
         """
         points = points.reshape((-1, 3))
-        points = encoding_function(points)
+
+        if encoding_function is None:
+            points = self.pos_embedder(points)
+        else:
+            points = encoding_function(points)
+
         points = self.get_chunks(points, chunksize=chunksize)
         return points
 
@@ -133,7 +138,7 @@ class NeRF_Data_Loader:
         self,
         points: torch.Tensor,
         rays_d: torch.Tensor,
-        encoding_function: Embedder,
+        encoding_function: Embedder = None,
         chunksize: int = 2**15,
     ) -> List[torch.Tensor]:
         """Feature-Encode and chunkify viewdirs to prepare for NeRF model.
@@ -150,7 +155,12 @@ class NeRF_Data_Loader:
         # Prepare the viewdirs
         viewdirs = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
         viewdirs = viewdirs[:, None, ...].expand(points.shape).reshape((-1, 3))
-        viewdirs = encoding_function(viewdirs)
+
+        if encoding_function is None:
+            viewdirs = self.viewdir_embedder(points)
+        else:
+            viewdirs = encoding_function(points)
+
         viewdirs = self.get_chunks(viewdirs, chunksize=chunksize)
         return viewdirs
 

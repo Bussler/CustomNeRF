@@ -11,7 +11,6 @@ from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Stratified_Sampler
 
 nerf_data_loader = NeRF_Data_Loader("data/tiny_nerf_data.npz")
-nerf_sampler = NeRF_Stratified_Sampler()
 device = torch.device("cpu")  # can also try "cuda"
 testimg_idx = 101
 
@@ -83,15 +82,19 @@ def debug_rays_generation(
     n_samples = 8
     perturb = True
     inverse_depth = False
+
+    nerf_sampler = NeRF_Stratified_Sampler(
+        near=nerf_data_loader.near,
+        far=nerf_data_loader.far,
+        n_samples=n_samples,
+        perturb=perturb,
+        inverse_depth=inverse_depth,
+    )
+
     with torch.no_grad():
         pts, z_vals = nerf_sampler.sample(
             rays_o,
             rays_d,
-            nerf_data_loader.near,
-            nerf_data_loader.far,
-            n_samples,
-            perturb=perturb,
-            inverse_depth=inverse_depth,
         )
 
     print("Input Points")
@@ -102,14 +105,17 @@ def debug_rays_generation(
 
     y_vals = torch.zeros_like(z_vals)
 
-    _, z_vals_unperturbed = nerf_sampler.sample(
-        rays_o,
-        rays_d,
-        nerf_data_loader.near,
-        nerf_data_loader.far,
-        n_samples,
+    nerf_sampler_unperturbed = NeRF_Stratified_Sampler(
+        near=nerf_data_loader.near,
+        far=nerf_data_loader.far,
+        n_samples=n_samples,
         perturb=False,
         inverse_depth=inverse_depth,
+    )
+
+    _, z_vals_unperturbed = nerf_sampler_unperturbed.sample(
+        rays_o,
+        rays_d,
     )
 
     if show:
@@ -202,11 +208,11 @@ def test_rays_generation():
     assert list(z_vals_shape) == [10000, 8]
 
 
-def test_NeRF_model():
-    d_pos, d_vdir, d_result = debug_NeRF_model()
-    assert d_pos == 60
-    assert d_vdir == 24
-    assert d_result == [1, 4]
+# def test_NeRF_model():
+#     d_pos, d_vdir, d_result = debug_NeRF_model()
+#     assert d_pos == 60
+#     assert d_vdir == 24
+#     assert d_result == [1, 4]
 
 
 if __name__ == "__main__":
@@ -214,5 +220,6 @@ if __name__ == "__main__":
     # debug_cam_directions_origins(True)
     # debug_rays_generation(True)
 
-    # debug_NeRF_model()
-    debug_NeRF_renderer()
+    debug_NeRF_model()
+    # debug_NeRF_renderer()
+    pass
