@@ -6,6 +6,7 @@ import torch
 
 from model.feature_embedding import PositionalEmbedding
 from model.NeRF import NeRF
+from training.nerf_inference import nerf_forward
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Stratified_Sampler
@@ -166,7 +167,43 @@ def debug_NeRF_renderer():
     ).unsqueeze(0)
 
     renderer = Differentiable_Volume_Renderer()
-    renderer.raw_to_outputs(raw, z_vals, ray_dir)
+    rgb_map, depth_map, acc_map, weights = renderer.raw_to_outputs(raw, z_vals, ray_dir)
+
+    print("Testrendering done")
+    pass
+
+
+def debug_NeRF_forward_pass():
+    testimg, testpose = debug_testimg_show(False)
+    testimg = torch.from_numpy(testimg).to(device)
+    testpose = torch.from_numpy(testpose).to(device)
+
+    with torch.no_grad():
+        ray_origin, ray_direction = nerf_data_loader.get_rays(
+            nerf_data_loader.height, nerf_data_loader.width, nerf_data_loader.focal, testpose
+        )
+
+    rays_o = ray_origin.view([-1, 3])
+    rays_d = ray_direction.view([-1, 3])
+
+    renderer = Differentiable_Volume_Renderer()
+
+    d_pos = nerf_data_loader.pos_embedder.out_dim
+    d_vdir = nerf_data_loader.viewdir_embedder.out_dim
+    nerf_model_coarse = NeRF(d_input_pos=d_pos, d_viewdirs=d_vdir)
+
+    n_samples = 8
+    perturb = True
+    inverse_depth = False
+    nerf_sampler_coarse = NeRF_Stratified_Sampler(
+        near=nerf_data_loader.near,
+        far=nerf_data_loader.far,
+        n_samples=n_samples,
+        perturb=perturb,
+        inverse_depth=inverse_depth,
+    )
+
+    outputs = nerf_forward(rays_o, rays_d, nerf_data_loader, renderer, nerf_model_coarse, nerf_sampler_coarse)
 
     pass
 
@@ -208,6 +245,10 @@ def test_rays_generation():
     assert list(z_vals_shape) == [10000, 8]
 
 
+# TODO NeRF debug test, renderer Test
+
+# TODO NeRF inference test
+
 # def test_NeRF_model():
 #     d_pos, d_vdir, d_result = debug_NeRF_model()
 #     assert d_pos == 60
@@ -220,6 +261,7 @@ if __name__ == "__main__":
     # debug_cam_directions_origins(True)
     # debug_rays_generation(True)
 
-    debug_NeRF_model()
+    # debug_NeRF_model()
     # debug_NeRF_renderer()
+    debug_NeRF_forward_pass()
     pass

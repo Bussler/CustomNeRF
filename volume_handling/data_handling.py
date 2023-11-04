@@ -15,6 +15,8 @@ class NeRF_Data_Loader:
         data_path="data/tiny_nerf_data.npz",
         pos_embedder: Embedder = None,
         viewdir_embedder: Embedder = None,
+        near=2.0,
+        far=6.0,
     ) -> None:
         # load data images
         self.data = np.load(data_path)
@@ -24,7 +26,8 @@ class NeRF_Data_Loader:
 
         # camera parameters
         self.height, self.width = self.images.shape[1:3]
-        self.near, self.far = 2.0, 6.0
+        self.near = near
+        self.far = far
 
         # convert 4*4 camera pose mat into origin camera pos + dir vector to indicate where the camera is pointing
         self.cam_dirs = np.stack([np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self.poses])
@@ -157,9 +160,9 @@ class NeRF_Data_Loader:
         viewdirs = viewdirs[:, None, ...].expand(points.shape).reshape((-1, 3))
 
         if encoding_function is None:
-            viewdirs = self.viewdir_embedder(points)
+            viewdirs = self.viewdir_embedder(viewdirs)
         else:
-            viewdirs = encoding_function(points)
+            viewdirs = encoding_function(viewdirs)
 
         viewdirs = self.get_chunks(viewdirs, chunksize=chunksize)
         return viewdirs
