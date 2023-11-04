@@ -84,8 +84,6 @@ def nerf_forward(
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
         dict containing rgb_map, depth_map, acc_map, weights (where to focus sampling, points of high alpha)
     """
-    # TODO: M: Get directly data loader, sampler etc in here and set them up correctly: They should hold the needed params as attributes!!
-
     # Sample query points along each ray.
     query_points, z_vals = sampler_coarse.sample(rays_o, rays_d)
     rgb_map, depth_map, acc_map, weights = nerf_inference(
@@ -101,9 +99,7 @@ def nerf_forward(
 
         # Apply hierarchical sampling for fine query points.
         kwargs_sample_hierarchical = {"z_vals": z_vals, "weights": weights}
-        query_points, z_vals_combined, z_hierarch = sampler_fine.sample(
-            rays_o, rays_d, **kwargs_sample_hierarchical
-        )  # TODO look if this is correct
+        query_points, z_vals_combined, z_hierarch = sampler_fine.sample(rays_o, rays_d, **kwargs_sample_hierarchical)
 
         fine_model = fine_model if fine_model is not None else coarse_model
         rgb_map, depth_map, acc_map, weights = nerf_inference(

@@ -9,7 +9,7 @@ from model.NeRF import NeRF
 from training.nerf_inference import nerf_forward
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rendering import Differentiable_Volume_Renderer
-from volume_handling.sampling import NeRF_Stratified_Sampler
+from volume_handling.sampling import NeRF_Hierarchical_Sampler, NeRF_Stratified_Sampler
 
 nerf_data_loader = NeRF_Data_Loader("data/tiny_nerf_data.npz")
 device = torch.device("cpu")  # can also try "cuda"
@@ -191,6 +191,7 @@ def debug_NeRF_forward_pass():
     d_pos = nerf_data_loader.pos_embedder.out_dim
     d_vdir = nerf_data_loader.viewdir_embedder.out_dim
     nerf_model_coarse = NeRF(d_input_pos=d_pos, d_viewdirs=d_vdir)
+    nerf_model_fine = NeRF(d_input_pos=d_pos, d_viewdirs=d_vdir)
 
     n_samples = 8
     perturb = True
@@ -203,7 +204,21 @@ def debug_NeRF_forward_pass():
         inverse_depth=inverse_depth,
     )
 
-    outputs = nerf_forward(rays_o, rays_d, nerf_data_loader, renderer, nerf_model_coarse, nerf_sampler_coarse)
+    nerf_sampler_fine = NeRF_Hierarchical_Sampler(
+        n_samples=n_samples,
+        perturb=perturb,
+    )
+
+    outputs = nerf_forward(
+        rays_o,
+        rays_d,
+        nerf_data_loader,
+        renderer,
+        nerf_model_coarse,
+        nerf_sampler_coarse,
+        fine_model=nerf_model_fine,
+        sampler_fine=nerf_sampler_fine,
+    )
 
     pass
 
