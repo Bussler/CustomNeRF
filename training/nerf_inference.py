@@ -17,7 +17,21 @@ def nerf_inference(
     data_loader: NeRF_Data_Loader,
     chunksize: int,
     renderer: Differentiable_Volume_Renderer,
-):
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Generate pixel rgb values from sampling points along ray with NeRF inference
+
+    Args:
+        query_points (torch.Tensor): sampled points positions
+        rays_d (torch.Tensor): direction vectors of the corresponding rays
+        z_vals (torch.Tensor): depth values of the sampled points along the rays
+        model (RadianceFieldEncoder): NeRF model
+        data_loader (NeRF_Data_Loader): data loader for batching
+        chunksize (int): chunksize of batches
+        renderer (Differentiable_Volume_Renderer): differentiable volume renderer to interpret the raw NeRF outputs
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: _description_
+    """
     # Batchifz the points and put them through the embedding function
     batches = data_loader.prepare_position_chunks(query_points, chunksize=chunksize)
 
@@ -38,7 +52,6 @@ def nerf_inference(
 
     # Perform differentiable volume rendering to re-synthesize the RGB image.
     rgb_map, depth_map, acc_map, weights = renderer.raw_to_outputs(raw, z_vals, rays_d)
-    # rgb_map, depth_map, acc_map, weights = render_volume_density(raw, rays_o, z_vals)
 
     return rgb_map, depth_map, acc_map, weights
 
@@ -68,7 +81,8 @@ def nerf_forward(
         chunksize (int, optional): chunksize of batches for training. Defaults to 2**15.
 
     Returns:
-        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]: _description_
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+        dict containing rgb_map, depth_map, acc_map, weights (where to focus sampling, points of high alpha)
     """
     # TODO: M: Get directly data loader, sampler etc in here and set them up correctly: They should hold the needed params as attributes!!
 
