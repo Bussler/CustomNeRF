@@ -1,4 +1,7 @@
 expname = test
+data_path = "data/tiny_nerf_data.npz"
+near = 2.0
+far = 6.0
 
 # Encoders
 d_input = 3           # Number of input dimensions
@@ -13,11 +16,11 @@ perturb = True         # If set, applies noise to sample positions
 inverse_depth = False  # If set, samples points linearly in inverse depth
 
 # Model
-d_filter = 128          # Dimensions of linear layer filters
+d_Weights = 128          # Dimensions of linear layer filters
 n_layers = 2            # Number of layers in network bottleneck
 skip = []               # Layers at which to apply input residual
 use_fine_model = True   # If set, creates a fine model
-d_filter_fine = 128     # Dimensions of linear layer filters of fine network
+d_Weights_fine = 128     # Dimensions of linear layer filters of fine network
 n_layers_fine = 6       # Number of layers in fine network bottleneck
 
 # Hierarchical sampling

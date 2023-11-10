@@ -8,12 +8,9 @@ from mpl_toolkits.mplot3d import axes3d
 from tqdm import trange
 
 from model.feature_embedding import PositionalEmbedding
+from training.train import train
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.sampling import NeRF_Stratified_Sampler
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-print(f"Running on: {device}")
 
 
 def config_parser() -> dict:
@@ -22,6 +19,10 @@ def config_parser() -> dict:
     parser = configargparse.ArgumentParser()
     parser.add_argument("--config", is_config_file=True, help="config file path")
     parser.add_argument("--expname", type=str, required=True, help="name of your experiment; is required")
+    parser.add_argument("--data_path", type=str, required=True, help="path to the trained dataset; is required")
+
+    parser.add_argument("--near", type=float, default=2.0, help="Near clipping distance")
+    parser.add_argument("--far", type=float, default=6.0, help="Far clipping distance")
 
     # Encoders
     parser.add_argument("--d_input", type=int, default=3, help="Number of input dimensions")
@@ -38,12 +39,12 @@ def config_parser() -> dict:
     )
 
     # Model
-    parser.add_argument("--d_filter", type=int, default=128, help="Dimensions of linear layer filters")
+    parser.add_argument("--d_Weights", type=int, default=128, help="Dimensions of linear layer filters")
     parser.add_argument("--n_layers", type=int, default=2, help="Number of layers in network bottleneck")
     parser.add_argument("--skip", nargs="*", type=int, default=[], help="Layers at which to apply input residual")
     parser.add_argument("--use_fine_model", type=bool, default=True, help="If set, creates a fine model")
     parser.add_argument(
-        "--d_filter_fine", type=int, default=128, help="Dimensions of linear layer filters of fine network"
+        "--d_Weights_fine", type=int, default=128, help="Dimensions of linear layer filters of fine network"
     )
     parser.add_argument("--n_layers_fine", type=int, default=6, help="Number of layers in fine network bottleneck")
 
@@ -86,4 +87,6 @@ def config_parser() -> dict:
 if __name__ == "__main__":
     args = vars(config_parser())
 
-    pass
+    # TODO M: add different parser for training, inference (load model, generate video...)
+
+    success = train(args)

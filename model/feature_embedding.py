@@ -12,9 +12,7 @@ class Embedder(nn.Module):
         self.embed_functions = []
         self.out_dim = 0
 
-    def create_embedding_function(
-        self, n_freqs: int, input_dim: int, log_space: bool = False
-    ):
+    def create_embedding_function(self, n_freqs: int, input_dim: int, log_space: bool = False):
         """Abstract function for concrete child Embedder classes to
         create the high frequency embedding functions for the input.
         The embedding functions are stored into self.embed_functions
@@ -49,14 +47,12 @@ class PositionalEmbedding(Embedder):
         Embedder (_type_): _description_
     """
 
-    def __init__(self, n_freqs: int, input_dim: int):
+    def __init__(self, n_freqs: int, input_dim: int, log_space: bool = False):
         super(PositionalEmbedding, self).__init__()
         self.periodic_functions = [torch.sin, torch.cos]
-        self.create_embedding_function(n_freqs, input_dim)
+        self.create_embedding_function(n_freqs, input_dim, log_space)
 
-    def create_embedding_function(
-        self, n_freqs: int, input_dim: int, log_space: bool = False
-    ):
+    def create_embedding_function(self, n_freqs: int, input_dim: int, log_space: bool = False):
         if log_space:
             freq_bands = 2.0 ** torch.linspace(0.0, n_freqs - 1, steps=n_freqs)
         else:
@@ -64,9 +60,7 @@ class PositionalEmbedding(Embedder):
 
         for freq in freq_bands:
             for p_fn in self.periodic_functions:
-                self.embed_functions.append(
-                    lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq)
-                )
+                self.embed_functions.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
                 self.out_dim += input_dim
 
 
@@ -83,15 +77,11 @@ class FourierEmbedding(Embedder):
         self.periodic_functions = [torch.sin, torch.cos]
         self.create_embedding_function(n_freqs, input_dim)
 
-    def create_embedding_function(
-        self, n_freqs: int, input_dim: int, log_space: bool = False
-    ):
+    def create_embedding_function(self, n_freqs: int, input_dim: int):
         freq_bands = 2.0 ** torch.linspace(0.0, n_freqs - 1, steps=n_freqs)
         freq_bands = freq_bands * 2.0 * np.pi
 
         for freq in freq_bands:
             for p_fn in self.periodic_functions:
-                self.embed_functions.append(
-                    lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq)
-                )
+                self.embed_functions.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
                 self.out_dim += input_dim
