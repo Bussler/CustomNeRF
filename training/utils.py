@@ -43,3 +43,64 @@ def crop_center(img: torch.Tensor, frac: float = 0.5) -> torch.Tensor:
     h_offset = round(img.shape[0] * (frac / 2))
     w_offset = round(img.shape[1] * (frac / 2))
     return img[h_offset:-h_offset, w_offset:-w_offset]
+
+
+def dict_from_file(filename) -> dict:
+    """Generate dictionary from experimental description file.
+    File can hold floats, ints, lists and strings.
+    Values have to be separated by "=".
+    Comments can be added by "#" and are filtered in the parsing.
+
+    Args:
+        filename (_type_): file to read from
+
+    Returns:
+        dict: argument dictionary
+    """
+    file = open(filename, "r")
+    Lines = file.readlines()
+
+    d = {}
+    for line in Lines:
+        line = line.replace(" ", "")
+        line = line.replace("\n", "")
+        line = line.replace("\t", "")
+
+        line = line.split("#")[0]  # M: remove comments from line
+        lineParts = line.split("=")  # M: split line into key and value
+
+        if len(lineParts) <= 1:
+            continue
+
+        key = lineParts[0]
+        value = lineParts[1]
+
+        # M: parse int, float, list or string
+        try:
+            value = int(value)
+        except ValueError:
+            try:
+                value = float(value)
+            except ValueError:
+                if "[" in value or "]" in value:
+                    value = value.replace("[", "")
+                    value = value.replace("]", "")
+                    value = value.split(",")
+
+                    try:
+                        value = [int(x) for x in value]
+                    except ValueError:
+                        try:
+                            value = [float(x) for x in value]
+                        except ValueError:  # M: empty list
+                            value = []
+                else:
+                    if value == "True" or value == "False":
+                        value = bool(value)
+                    else:  # M: normal string
+                        value = value.replace('"', "")
+                        value = str(value)
+
+        d[key] = value
+
+    return d

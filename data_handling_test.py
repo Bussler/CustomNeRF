@@ -7,6 +7,8 @@ import torch
 from model.feature_embedding import PositionalEmbedding
 from model.NeRF import NeRF
 from training.nerf_inference import nerf_forward
+from training.setup_stuff import init_models
+from training.utils import dict_from_file
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Hierarchical_Sampler, NeRF_Stratified_Sampler
@@ -223,6 +225,43 @@ def debug_NeRF_forward_pass():
     pass
 
 
+def debug_model_init():
+    experiment_file = "experiments/testexperiment.txt"
+    args = dict_from_file(experiment_file)
+
+    (
+        model,
+        fine_model,
+        data_loader,
+        nerf_sampler_coarse,
+        nerf_sampler_fine,
+        renderer,
+        optimizer,
+        warmup_stopper,
+    ) = init_models(
+        device,
+        args["data_path"],
+        args["near"],
+        args["far"],
+        args["use_viewdirs"],
+        args["d_input"],
+        args["n_freqs"],
+        args["n_freqs_views"],
+        args["log_space"],
+        args["n_samples"],
+        args["perturb"],
+        args["inverse_depth"],
+        args["use_fine_model"],
+        args["n_layers"],
+        args["d_Weights"],
+        args["n_layers_fine"],
+        args["d_Weights_fine"],
+        args["skip"],
+        args["lr"],
+    )
+    pass
+
+
 def test_basic_image_information():
     num_img, img_shape, pose_shape, focal = nerf_data_loader.debug_information()
     assert num_img == 106
@@ -278,5 +317,6 @@ if __name__ == "__main__":
 
     # debug_NeRF_model()
     # debug_NeRF_renderer()
-    debug_NeRF_forward_pass()
+    # debug_NeRF_forward_pass()
+    debug_model_init()
     pass
