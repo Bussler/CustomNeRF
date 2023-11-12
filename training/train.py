@@ -2,20 +2,81 @@ from typing import Tuple
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 from model.RadianceFieldEncoder import RadianceFieldEncoder
 from training.early_stopping import EarlyStopping
 from training.nerf_inference import nerf_forward
 from training.setup_stuff import init_models
-from training.utils import crop_center
+from training.utils import crop_center, plot_samples
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rays_rgb_dataset import Ray_Rgb_Dataset
 from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Sampler
 
 
-def validate_model():
-    pass
+def validate_model(
+    index: int,
+    train_psnrs: list,
+    val_psnrs: list,
+    iternums: list,
+    data_loader: NeRF_Data_Loader,
+    renderer: Differentiable_Volume_Renderer,
+    model: RadianceFieldEncoder,
+    nerf_sampler_coarse: NeRF_Sampler,
+    fine_model: RadianceFieldEncoder = None,
+    nerf_sampler_fine: NeRF_Sampler = None,
+    batch_chunksize: int = 2**15,
+    n_samples: int = 64,
+    n_samples_hierarchical: int = 64,
+):
+    testimg, testpose = data_loader.get_validation_image_pose()
+
+    height, width = testimg.shape[:2]
+    rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, testpose)
+    rays_o = rays_o.reshape([-1, 3])
+    rays_d = rays_d.reshape([-1, 3])
+    outputs = nerf_forward(
+        rays_o,
+        rays_d,
+        data_loader,
+        renderer,
+        model,
+        nerf_sampler_coarse,
+        fine_model,
+        nerf_sampler_fine,
+        batch_chunksize,
+    )
+
+    rgb_predicted = outputs["rgb_map"]
+    loss = torch.nn.functional.mse_loss(rgb_predicted, testimg.reshape(-1, 3))
+    print("Validation Loss:", loss.item())
+
+    val_psnr = -10.0 * torch.log10(loss)
+    val_psnrs.append(val_psnr.item())
+    iternums.append(index)
+
+    # Plot example outputs
+    fig, ax = plt.subplots(1, 4, figsize=(24, 4), gridspec_kw={"width_ratios": [1, 1, 1, 3]})
+    ax[0].imshow(rgb_predicted.reshape([height, width, 3]).detach().cpu().numpy())
+    ax[0].set_title(f"Iteration: {index}")
+    ax[1].imshow(testimg.detach().cpu().numpy())
+    ax[1].set_title(f"Target")
+    ax[2].plot(range(0, index + 1), train_psnrs, "r")
+    ax[2].plot(iternums, val_psnrs, "b")
+    ax[2].set_title("PSNR (train=red, val=blue")
+    z_vals_strat = outputs["z_vals_stratified"].view((-1, n_samples))
+    z_sample_strat = z_vals_strat[z_vals_strat.shape[0] // 2].detach().cpu().numpy()
+    if "z_vals_hierarchical" in outputs:
+        z_vals_hierarch = outputs["z_vals_hierarchical"].view((-1, n_samples_hierarchical))
+        z_sample_hierarch = z_vals_hierarch[z_vals_hierarch.shape[0] // 2].detach().cpu().numpy()
+    else:
+        z_sample_hierarch = None
+    _ = plot_samples(z_sample_strat, z_sample_hierarch, ax=ax[3])
+    ax[3].margins(0)
+    plt.show()  # TODO M: Instead of showing, safe to file?
+
+    return val_psnr, val_psnrs, iternums
 
 
 def training_session(
@@ -38,7 +99,7 @@ def training_session(
     display_rate: int = 100,
 ) -> Tuple[bool, list, list]:
     # M: Gather and shuffle rays across all images.
-    one_image_per_step = False  # TODO M: Remove this line
+    one_image_per_step = True  # TODO M: Remove this line
     if not one_image_per_step:
         rays_rgb = data_loader.get_training_rays()
         rays_rgb_dataset = Ray_Rgb_Dataset(rays_rgb)
@@ -101,24 +162,23 @@ def training_session(
         if i % display_rate == 0:
             model.eval()
             with torch.no_grad():
-                # val_psnr = validate_model(
-                #     device,
-                #     data_loader,
-                #     renderer,
-                #     model,
-                #     nerf_sampler_coarse,
-                #     fine_model,
-                #     nerf_sampler_fine,
-                #     batch_chunksize,
-                #     center_crop,
-                #     center_crop_iters,
-                # )
-                pass
-            val_psnrs.append(val_psnr.item())
+                val_psnr, val_psnrs, iternums = validate_model(
+                    i,
+                    train_psnrs,
+                    val_psnrs,
+                    iternums,
+                    data_loader,
+                    renderer,
+                    model,
+                    nerf_sampler_coarse,
+                    fine_model,
+                    nerf_sampler_fine,
+                    batch_chunksize,
+                )
 
         # Stop training if warmup issues with psnr metric
         if i == warmup_iters - 1:
-            if val_psnr is not 0.0 and val_psnr < warmup_min_fitness:
+            if val_psnr != 0.0 and val_psnr < warmup_min_fitness:
                 print(f"Val PSNR {val_psnr} below warmup_min_fitness {warmup_min_fitness}. Stopping...")
                 return False, train_psnrs, val_psnrs
         elif i < warmup_iters:

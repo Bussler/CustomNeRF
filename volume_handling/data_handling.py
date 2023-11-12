@@ -39,14 +39,6 @@ class NeRF_Data_Loader:
         self.cam_dirs = np.stack([np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self.poses])
         self.cam_origins = self.poses[:, :3, -1]
 
-        # TODO should this class have a method like sample() that instantly generates the samples along each ray?
-        # set class for sampling points from volume
-        # if point_sampler is not None:
-        #     self.point_sampler = point_sampler
-        # else:
-        #     self.point_sampler = NeRF_Stratified_Sampler()
-
-        # set high frequency embedders for input to network
         if pos_embedder is not None:
             self.pos_embedder = pos_embedder
         else:
@@ -133,6 +125,10 @@ class NeRF_Data_Loader:
         rays_rgb = rays_rgb.type(torch.float32)
         rays_rgb = rays_rgb[torch.randperm(rays_rgb.shape[0])]  # M: shuffle rays
         return rays_rgb
+
+    def get_validation_image_pose(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        testimg_idx = np.random.randint(self.validation_images.shape[0])
+        return self.validation_images[testimg_idx], self.validation_poses[testimg_idx]
 
     def get_chunks(self, inputs: torch.Tensor, chunksize: int = 2**15) -> List[torch.Tensor]:
         """Helper function to divide an input into chunks.
