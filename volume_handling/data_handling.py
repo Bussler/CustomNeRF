@@ -113,11 +113,11 @@ class NeRF_Data_Loader:
         rays_o = c2w[:3, -1].expand(rays_d.shape)
         return rays_o, rays_d
 
-    def get_training_ray_batch(self) -> torch.Tensor:
-        """Generate a batch of rays o, d, rgb values for training.
+    def get_training_rays(self) -> torch.Tensor:
+        """Generate a tensor of all rays o, d, rgb values for training.
 
         Returns:
-            torch.Tensor: shuffled batch of rays o, d, rgb values in shape [n_training*width*height, 3, 3]
+            torch.Tensor: shuffled tensor of rays o, d, rgb values in shape [n_training*width*height, 3, 3]
         """
         all_rays = torch.stack(
             [torch.stack(self.get_rays(self.height, self.width, self.focal, p), 0) for p in self.train_poses],

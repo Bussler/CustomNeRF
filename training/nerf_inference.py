@@ -32,7 +32,7 @@ def nerf_inference(
     Returns:
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: _description_
     """
-    # Batchifz the points and put them through the embedding function
+    # Batchify the points and put them through the embedding function
     batches = data_loader.prepare_position_chunks(query_points, chunksize=chunksize)
 
     # TODO M: find something to make viewdirs optional! Here the embedder is always set!
