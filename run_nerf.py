@@ -65,7 +65,7 @@ def config_parser() -> dict:
     parser.add_argument(
         "--one_image_per_step", type=bool, default=False, help="One image per gradient step (disables batching)"
     )
-    parser.add_argument("--chunksize", type=float, default=2**14, help="Modify as needed to fit in GPU memory")
+    parser.add_argument("--chunksize", type=int, default=2**14, help="Modify as needed to fit in GPU memory")
     parser.add_argument(
         "--center_crop", type=bool, default=True, help="Debugging: Crop the center of image (one_image_per_)"
     )

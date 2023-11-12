@@ -4,20 +4,38 @@ import numpy as np
 import torch
 
 from model.RadianceFieldEncoder import RadianceFieldEncoder
+from training.early_stopping import EarlyStopping
+from training.nerf_inference import nerf_forward
 from training.setup_stuff import init_models
 from training.utils import crop_center
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rays_rgb_dataset import Ray_Rgb_Dataset
+from volume_handling.rendering import Differentiable_Volume_Renderer
+from volume_handling.sampling import NeRF_Sampler
+
+
+def validate_model():
+    pass
 
 
 def training_session(
     device: torch.device,
     data_loader: NeRF_Data_Loader,
     n_iters: int,
+    optimizer: torch.optim.Optimizer,
+    warmup_stopper: EarlyStopping,
+    renderer: Differentiable_Volume_Renderer,
     model: RadianceFieldEncoder,
+    nerf_sampler_coarse: NeRF_Sampler,
+    fine_model: RadianceFieldEncoder = None,
+    nerf_sampler_fine: NeRF_Sampler = None,
+    batch_chunksize: int = 2**15,
     one_image_per_step: bool = False,
     center_crop: bool = True,
     center_crop_iters: int = 50,
+    warmup_iters: int = 100,
+    warmup_min_fitness: float = 10.0,
+    display_rate: int = 100,
 ) -> Tuple[bool, list, list]:
     # M: Gather and shuffle rays across all images.
     one_image_per_step = False  # TODO M: Remove this line
@@ -49,12 +67,64 @@ def training_session(
         target_img = target_img.reshape([-1, 3])
 
         # Forward pass through model.
+        outputs = nerf_forward(
+            rays_o,
+            rays_d,
+            data_loader,
+            renderer,
+            model,
+            nerf_sampler_coarse,
+            fine_model,
+            nerf_sampler_fine,
+            batch_chunksize,
+        )
+
+        # Check for any numerical issues.
+        for k, v in outputs.items():
+            if torch.isnan(v).any():
+                print(f"! [Numerical Alert] {k} contains NaN.")
+            if torch.isinf(v).any():
+                print(f"! [Numerical Alert] {k} contains Inf.")
 
         # Backpropagate loss.
+        rgb_predicted = outputs["rgb_map"]
+        loss = torch.nn.functional.mse_loss(rgb_predicted, target_img)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+        psnr = -10.0 * torch.log10(loss)
+        train_psnrs.append(psnr.item())
 
         # Validate model.
+        val_psnr = 0.0
+        if i % display_rate == 0:
+            model.eval()
+            with torch.no_grad():
+                # val_psnr = validate_model(
+                #     device,
+                #     data_loader,
+                #     renderer,
+                #     model,
+                #     nerf_sampler_coarse,
+                #     fine_model,
+                #     nerf_sampler_fine,
+                #     batch_chunksize,
+                #     center_crop,
+                #     center_crop_iters,
+                # )
+                pass
+            val_psnrs.append(val_psnr.item())
 
-        # Stop training if warmup issues
+        # Stop training if warmup issues with psnr metric
+        if i == warmup_iters - 1:
+            if val_psnr is not 0.0 and val_psnr < warmup_min_fitness:
+                print(f"Val PSNR {val_psnr} below warmup_min_fitness {warmup_min_fitness}. Stopping...")
+                return False, train_psnrs, val_psnrs
+        elif i < warmup_iters:
+            if warmup_stopper is not None and warmup_stopper(i, psnr):
+                print(f"Train PSNR flatlined at {psnr} for {warmup_stopper.patience} iters. Stopping...")
+                return False, train_psnrs, val_psnrs
 
     return True, train_psnrs, val_psnrs
 
@@ -111,11 +181,22 @@ def train(args: dict) -> bool:
             device,
             data_loader,
             args["n_iters"],
+            optimizer,
+            warmup_stopper,
+            renderer,
             model,
+            nerf_sampler_coarse,
+            fine_model,
+            nerf_sampler_fine,
+            args["chunksize"],
             args["one_image_per_step"],
             args["center_crop"],
             args["center_crop_iters"],
+            args["warmup_iters"],
+            args["warmup_min_fitness"],
+            args["display_rate"],
         )
+
         if success and val_psnrs[-1] >= args["warmup_min_fitness"]:
             print("Training successful!")
             # TODO M: Store model params?
