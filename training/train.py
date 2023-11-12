@@ -99,7 +99,6 @@ def training_session(
     display_rate: int = 100,
 ) -> Tuple[bool, list, list]:
     # M: Gather and shuffle rays across all images.
-    one_image_per_step = True  # TODO M: Remove this line
     if not one_image_per_step:
         rays_rgb = data_loader.get_training_rays()
         rays_rgb_dataset = Ray_Rgb_Dataset(rays_rgb)

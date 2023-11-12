@@ -16,6 +16,15 @@ from volume_handling.sampling import NeRF_Stratified_Sampler
 def config_parser() -> dict:
     import configargparse
 
+    # Create a function to convert the argument to a boolean
+    def str2bool(v):
+        if v.lower() in ("yes", "true", "t", "y", "1"):
+            return True
+        elif v.lower() in ("no", "false", "f", "n", "0"):
+            return False
+        else:
+            raise configargparse.ArgumentTypeError("Boolean value expected.")
+
     parser = configargparse.ArgumentParser()
     parser.add_argument("--config", is_config_file=True, help="config file path")
     parser.add_argument("--expname", type=str, required=True, help="name of your experiment; is required")
@@ -28,22 +37,22 @@ def config_parser() -> dict:
     # Encoders
     parser.add_argument("--d_input", type=int, default=3, help="Number of input dimensions")
     parser.add_argument("--n_freqs", type=int, default=10, help="Number of encoding functions for samples")
-    parser.add_argument("--log_space", type=bool, default=True, help="If set, frequencies scale in log space")
-    parser.add_argument("--use_viewdirs", type=bool, default=True, help="If set, use view direction as input")
+    parser.add_argument("--log_space", type=str2bool, default="True", help="If set, frequencies scale in log space")
+    parser.add_argument("--use_viewdirs", type=str2bool, default="True", help="If set, use view direction as input")
     parser.add_argument("--n_freqs_views", type=int, default=4, help="Number of encoding functions for views")
 
     # Stratified sampling
     parser.add_argument("--n_samples", type=int, default=64, help="Number of spatial samples per ray")
-    parser.add_argument("--perturb", type=bool, default=True, help="If set, applies noise to sample positions")
+    parser.add_argument("--perturb", type=str2bool, default="True", help="If set, applies noise to sample positions")
     parser.add_argument(
-        "--inverse_depth", type=bool, default=False, help="If set, samples points linearly in inverse depth"
+        "--inverse_depth", type=str2bool, default="False", help="If set, samples points linearly in inverse depth"
     )
 
     # Model
     parser.add_argument("--d_Weights", type=int, default=128, help="Dimensions of linear layer filters")
     parser.add_argument("--n_layers", type=int, default=2, help="Number of layers in network bottleneck")
     parser.add_argument("--skip", nargs="*", type=int, default=[], help="Layers at which to apply input residual")
-    parser.add_argument("--use_fine_model", type=bool, default=True, help="If set, creates a fine model")
+    parser.add_argument("--use_fine_model", type=str2bool, default="True", help="If set, creates a fine model")
     parser.add_argument(
         "--d_Weights_fine", type=int, default=128, help="Dimensions of linear layer filters of fine network"
     )
@@ -52,7 +61,7 @@ def config_parser() -> dict:
     # Hierarchical sampling
     parser.add_argument("--n_samples_hierarchical", type=int, default=64, help="Number of samples per ray")
     parser.add_argument(
-        "--perturb_hierarchical", type=bool, default=False, help="If set, applies noise to sample positions"
+        "--perturb_hierarchical", type=str2bool, default="False", help="If set, applies noise to sample positions"
     )
 
     # Optimizer
@@ -64,11 +73,11 @@ def config_parser() -> dict:
         "--batch_size", type=float, default=2**14, help="Number of rays per gradient step (power of 2)"
     )
     parser.add_argument(
-        "--one_image_per_step", type=bool, default=False, help="One image per gradient step (disables batching)"
+        "--one_image_per_step", type=str2bool, default="False", help="One image per gradient step (disables batching)"
     )
     parser.add_argument("--chunksize", type=int, default=2**14, help="Modify as needed to fit in GPU memory")
     parser.add_argument(
-        "--center_crop", type=bool, default=True, help="Debugging: Crop the center of image (one_image_per_)"
+        "--center_crop", type=str2bool, default="True", help="Debugging: Crop the center of image (one_image_per_)"
     )
     parser.add_argument(
         "--center_crop_iters", type=int, default=50, help="Debugging: Stop cropping center after this many epochs"
