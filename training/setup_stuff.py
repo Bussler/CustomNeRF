@@ -20,6 +20,7 @@ def init_models(
     data_path: str = "data/tiny_nerf_data.npz",
     near: float = 2.0,
     far: float = 6.0,
+    n_training: int = 100,
     use_viewdirs: bool = True,
     d_input: int = 3,
     n_freqs: int = 10,
@@ -85,7 +86,6 @@ def init_models(
         d_viewdirs = None
 
     # Data Loader
-    n_training = 100  # TODO M: n_training should be a parameter, not a constant
     data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, device, n_training, near, far)
 
     # Samplers

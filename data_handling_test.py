@@ -138,7 +138,6 @@ def debug_NeRF_model() -> Tuple[int, int, list[int]]:
     tensor_pos = torch.tensor([1.0, 1.0, 1.0])
     tensor_dir = torch.tensor([1.0, 1.0, 1.0])
 
-    # TODO test with small input (xyz, 3Vec: dir)
     pos_encoder = PositionalEmbedding(n_freqs=10, input_dim=3)
     vdir_encoder = PositionalEmbedding(n_freqs=4, input_dim=3)
 
@@ -157,7 +156,6 @@ def debug_NeRF_model() -> Tuple[int, int, list[int]]:
 
 
 def debug_NeRF_renderer():
-    # TODO unsqueeze to correct numbers: [n_rays, n_samples]
     raw = torch.tensor([1.0, 1.0, 1.0, 0.5]).unsqueeze(0)
     z_vals = torch.tensor(torch.linspace(2.0, 6.0, 8)).unsqueeze(0)
     ray_dir = torch.tensor(
@@ -243,6 +241,7 @@ def debug_model_init():
         args["data_path"],
         args["near"],
         args["far"],
+        args["n_training"],
         args["use_viewdirs"],
         args["d_input"],
         args["n_freqs"],
@@ -313,10 +312,10 @@ def test_rays_generation():
 if __name__ == "__main__":
     # debug_testimg_show(True)
     # debug_cam_directions_origins(True)
-    # debug_rays_generation(True)
+    debug_rays_generation(True)
 
     # debug_NeRF_model()
     # debug_NeRF_renderer()
     # debug_NeRF_forward_pass()
-    debug_model_init()
+    # debug_model_init()
     pass

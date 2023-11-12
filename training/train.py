@@ -220,6 +220,7 @@ def train(args: dict) -> bool:
             args["data_path"],
             args["near"],
             args["far"],
+            args["n_training"],
             args["use_viewdirs"],
             args["d_input"],
             args["n_freqs"],

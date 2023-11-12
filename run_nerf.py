@@ -23,6 +23,7 @@ def config_parser() -> dict:
 
     parser.add_argument("--near", type=float, default=2.0, help="Near clipping distance")
     parser.add_argument("--far", type=float, default=6.0, help="Far clipping distance")
+    parser.add_argument("--n_training", type=int, default=100, help="Far clipping distance")
 
     # Encoders
     parser.add_argument("--d_input", type=int, default=3, help="Number of input dimensions")
