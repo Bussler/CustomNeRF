@@ -85,7 +85,8 @@ def init_models(
         d_viewdirs = None
 
     # Data Loader
-    data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, near, far)
+    n_training = 100  # TODO M: n_training should be a parameter, not a constant
+    data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, device, n_training, near, far)
 
     # Samplers
     nerf_sampler_coarse = NeRF_Stratified_Sampler(

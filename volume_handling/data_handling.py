@@ -15,13 +15,19 @@ class NeRF_Data_Loader:
         data_path="data/tiny_nerf_data.npz",
         pos_embedder: Embedder = None,
         viewdir_embedder: Embedder = None,
+        device: torch.device = torch.device("cpu"),
+        n_training: int = 100,
         near=2.0,
         far=6.0,
     ) -> None:
         # load data images
         self.data = np.load(data_path)
         self.images = self.data["images"]
+        self.train_images = []
+        self.validation_images = []
         self.poses = self.data["poses"]
+        self.train_poses = []
+        self.validation_poses = []
         self.focal = self.data["focal"]
 
         # camera parameters
@@ -51,6 +57,11 @@ class NeRF_Data_Loader:
         else:
             self.viewdir_embedder = PositionalEmbedding(n_freqs=4, input_dim=3)
 
+        # move data to torch device
+        self.device = device
+        self.n_training = n_training
+        self.data_to_device(self.device, self.n_training)
+
     def data_to_device(self, device: torch.device, n_training: int = 100):
         """move data (images, poses, focal) to torch device (cpu or cuda)
 
@@ -58,10 +69,10 @@ class NeRF_Data_Loader:
             device (torch.device): device to move to
             n_training (int, optional): how many training images to move. Defaults to 100.
         """
-
-        # Gather as torch tensors
-        self.images = torch.from_numpy(self.data["images"][:n_training]).to(device)
-        self.poses = torch.from_numpy(self.data["poses"]).to(device)
+        self.train_images = torch.from_numpy(self.data["images"][:n_training]).to(device)
+        self.validation_images = torch.from_numpy(self.data["images"][n_training:]).to(device)
+        self.train_poses = torch.from_numpy(self.data["poses"][:n_training]).to(device)
+        self.validation_poses = torch.from_numpy(self.data["poses"][n_training:]).to(device)
         self.focal = torch.from_numpy(self.data["focal"]).to(device)
 
     def get_rays(
@@ -81,8 +92,8 @@ class NeRF_Data_Loader:
 
         # Apply pinhole camera model to gather directions at each pixel
         i, j = torch.meshgrid(
-            torch.arange(width, dtype=torch.float32),
-            torch.arange(height, dtype=torch.float32),
+            torch.arange(width, dtype=torch.float32, device=c2w.device),
+            torch.arange(height, dtype=torch.float32, device=c2w.device),
             indexing="ij",
         )
         i, j = i.transpose(-1, -2), j.transpose(-1, -2)
@@ -93,7 +104,7 @@ class NeRF_Data_Loader:
                 -torch.ones_like(i),
             ],
             dim=-1,
-        ).to(c2w)
+        )
 
         # Apply camera pose to directions
         rays_d = torch.sum(directions[..., None, :] * c2w[:3, :3], dim=-1)
@@ -101,6 +112,27 @@ class NeRF_Data_Loader:
         # Origin is same for all pixels/ directions (the optical center)
         rays_o = c2w[:3, -1].expand(rays_d.shape)
         return rays_o, rays_d
+
+    def get_training_ray_batch(self) -> torch.Tensor:
+        """Generate a batch of rays o, d, rgb values for training.
+
+        Returns:
+            torch.Tensor: shuffled batch of rays o, d, rgb values in shape [n_training*width*height, 3, 3]
+        """
+        all_rays = torch.stack(
+            [torch.stack(self.get_rays(self.height, self.width, self.focal, p), 0) for p in self.train_poses],
+            0,
+        )  # M: stack for all training images the rays_o and rays_d; shape [n_training, 2, width, height, 3]
+        rays_rgb = torch.cat(
+            [all_rays, self.train_images[:, None]], 1
+        )  # M: add rgb values to rays; shape [n_training, 3, width, height, 3]
+        rays_rgb = torch.permute(
+            rays_rgb, [0, 2, 3, 1, 4]
+        )  # M: reorder o, d, rgb values to singular rays; reshape to [n_training, width, height, 3, 3]
+        rays_rgb = rays_rgb.reshape([-1, 3, 3])  # M: flatten; reshape to [n_training*width*height, 3, 3]
+        rays_rgb = rays_rgb.type(torch.float32)
+        rays_rgb = rays_rgb[torch.randperm(rays_rgb.shape[0])]  # M: shuffle rays
+        return rays_rgb
 
     def get_chunks(self, inputs: torch.Tensor, chunksize: int = 2**15) -> List[torch.Tensor]:
         """Helper function to divide an input into chunks.

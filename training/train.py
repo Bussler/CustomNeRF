@@ -14,32 +14,12 @@ def training_session(
     model: RadianceFieldEncoder,
     one_image_per_step: bool = False,
 ) -> Tuple[bool, list, list]:
-    # M: move data from loader to device
-    n_training = 100  # TODO M: n_training should be a parameter, not a constant
-    data_loader.data_to_device(device, n_training)
-
     # M: Gather and shuffle rays across all images.
     one_image_per_step = False
     if not one_image_per_step:
-        height, width = data_loader.train_images.shape[1:3]
-        all_rays = torch.stack(
-            [
-                torch.stack(data_loader.get_rays(height, width, data_loader.focal, p), 0)
-                for p in data_loader.poses[:n_training]
-            ],
-            0,
-        )  # M: stack for all training images the rays_o and rays_d; shape [n_training, 2, width, height, 3]
-        rays_rgb = torch.cat(
-            [all_rays, data_loader.train_images[:, None]], 1
-        )  # M: add rgb values to rays; shape [n_training, 3, width, height, 3]
-        rays_rgb = torch.permute(
-            rays_rgb, [0, 2, 3, 1, 4]
-        )  # M: reorder o, d, rgb values to singular rays; reshape to [n_training, width, height, 3, 3]
-        rays_rgb = rays_rgb.reshape([-1, 3, 3])  # M: flatten; reshape to [n_training*width*height, 3, 3]
-        rays_rgb = rays_rgb.type(torch.float32)
-        rays_rgb = rays_rgb[torch.randperm(rays_rgb.shape[0])]  # M: shuffle rays
-        i_batch = 0
+        rays_rgb = data_loader.get_training_ray_batch()
 
+    i_batch = 0
     train_psnrs = []
     val_psnrs = []
     iternums = []
