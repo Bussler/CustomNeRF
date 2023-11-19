@@ -29,6 +29,7 @@ def config_parser() -> dict:
     parser.add_argument("--config", is_config_file=True, help="config file path")
     parser.add_argument("--expname", type=str, required=True, help="name of your experiment; is required")
     parser.add_argument("--data_path", type=str, required=True, help="path to the trained dataset; is required")
+    parser.add_argument("--out_path", type=str, default="experiments/", help="output destination of your experiment")
 
     parser.add_argument("--near", type=float, default=2.0, help="Near clipping distance")
     parser.add_argument("--far", type=float, default=6.0, help="Far clipping distance")

@@ -45,6 +45,19 @@ def crop_center(img: torch.Tensor, frac: float = 0.5) -> torch.Tensor:
     return img[h_offset:-h_offset, w_offset:-w_offset]
 
 
+def write_dict_to_file(filename: str, d: dict) -> None:
+    """Write dictionary to file.
+
+    Args:
+        filename (str): file to write to
+        d (dict): dictionary to write
+    """
+    file = open(filename, "w")
+    for key, value in d.items():
+        file.write(str(key) + "=" + str(value) + "\n")
+    file.close()
+
+
 def dict_from_file(filename) -> dict:
     """Generate dictionary from experimental description file.
     File can hold floats, ints, lists and strings.

@@ -8,7 +8,7 @@ from model.RadianceFieldEncoder import RadianceFieldEncoder
 from training.early_stopping import EarlyStopping
 from training.nerf_inference import nerf_forward
 from training.setup_stuff import init_models
-from training.utils import crop_center, plot_samples
+from training.utils import crop_center, plot_samples, write_dict_to_file
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rays_rgb_dataset import Ray_Rgb_Dataset
 from volume_handling.rendering import Differentiable_Volume_Renderer
@@ -19,6 +19,7 @@ def validate_model(
     index: int,
     train_psnrs: list,
     val_psnrs: list,
+    val_losses: list,
     iternums: list,
     data_loader: NeRF_Data_Loader,
     renderer: Differentiable_Volume_Renderer,
@@ -29,7 +30,8 @@ def validate_model(
     batch_chunksize: int = 2**15,
     n_samples: int = 64,
     n_samples_hierarchical: int = 64,
-):
+    show_graph: bool = True,
+) -> Tuple[float, list, list, list]:
     testimg, testpose = data_loader.get_validation_image_pose()
 
     height, width = testimg.shape[:2]
@@ -50,33 +52,36 @@ def validate_model(
 
     rgb_predicted = outputs["rgb_map"]
     loss = torch.nn.functional.mse_loss(rgb_predicted, testimg.reshape(-1, 3))
+    val_losses.append(loss.item())
     print("Validation Loss:", loss.item())
 
     val_psnr = -10.0 * torch.log10(loss)
     val_psnrs.append(val_psnr.item())
+    print("Validation psnr:", val_psnr.item())
     iternums.append(index)
 
     # Plot example outputs
-    fig, ax = plt.subplots(1, 4, figsize=(24, 4), gridspec_kw={"width_ratios": [1, 1, 1, 3]})
-    ax[0].imshow(rgb_predicted.reshape([height, width, 3]).detach().cpu().numpy())
-    ax[0].set_title(f"Iteration: {index}")
-    ax[1].imshow(testimg.detach().cpu().numpy())
-    ax[1].set_title(f"Target")
-    ax[2].plot(range(0, index + 1), train_psnrs, "r")
-    ax[2].plot(iternums, val_psnrs, "b")
-    ax[2].set_title("PSNR (train=red, val=blue")
-    z_vals_strat = outputs["z_vals_stratified"].view((-1, n_samples))
-    z_sample_strat = z_vals_strat[z_vals_strat.shape[0] // 2].detach().cpu().numpy()
-    if "z_vals_hierarchical" in outputs:
-        z_vals_hierarch = outputs["z_vals_hierarchical"].view((-1, n_samples_hierarchical))
-        z_sample_hierarch = z_vals_hierarch[z_vals_hierarch.shape[0] // 2].detach().cpu().numpy()
-    else:
-        z_sample_hierarch = None
-    _ = plot_samples(z_sample_strat, z_sample_hierarch, ax=ax[3])
-    ax[3].margins(0)
-    plt.show()  # TODO M: Instead of showing, safe to file?
+    if show_graph:
+        fig, ax = plt.subplots(1, 4, figsize=(24, 4), gridspec_kw={"width_ratios": [1, 1, 1, 3]})
+        ax[0].imshow(rgb_predicted.reshape([height, width, 3]).detach().cpu().numpy())
+        ax[0].set_title(f"Iteration: {index}")
+        ax[1].imshow(testimg.detach().cpu().numpy())
+        ax[1].set_title(f"Target")
+        ax[2].plot(range(0, index + 1), train_psnrs, "r")
+        ax[2].plot(iternums, val_psnrs, "b")
+        ax[2].set_title("PSNR (train=red, val=blue")
+        z_vals_strat = outputs["z_vals_stratified"].view((-1, n_samples))
+        z_sample_strat = z_vals_strat[z_vals_strat.shape[0] // 2].detach().cpu().numpy()
+        if "z_vals_hierarchical" in outputs:
+            z_vals_hierarch = outputs["z_vals_hierarchical"].view((-1, n_samples_hierarchical))
+            z_sample_hierarch = z_vals_hierarch[z_vals_hierarch.shape[0] // 2].detach().cpu().numpy()
+        else:
+            z_sample_hierarch = None
+        _ = plot_samples(z_sample_strat, z_sample_hierarch, ax=ax[3])
+        ax[3].margins(0)
+        plt.show()  # TODO M: Instead of showing, safe to file?
 
-    return val_psnr, val_psnrs, iternums
+    return val_psnr, val_psnrs, val_losses, iternums
 
 
 def training_session(
@@ -97,7 +102,7 @@ def training_session(
     warmup_iters: int = 100,
     warmup_min_fitness: float = 10.0,
     display_rate: int = 100,
-) -> Tuple[bool, list, list]:
+) -> Tuple[bool, list, list, list]:
     # M: Gather and shuffle rays across all images.
     if not one_image_per_step:
         rays_rgb = data_loader.get_training_rays()
@@ -106,6 +111,7 @@ def training_session(
     i_batch = 0
     train_psnrs = []
     val_psnrs = []
+    val_losses = []
     iternums = []
     for i in range(n_iters):
         model.train()
@@ -159,12 +165,15 @@ def training_session(
         # Validate model.
         val_psnr = 0.0
         if i % display_rate == 0:
+            print(f"--- Iteration: {i} / {n_iters} | Train PSNR: {psnr} | Train Loss: {loss} ---")
+
             model.eval()
             with torch.no_grad():
-                val_psnr, val_psnrs, iternums = validate_model(
+                val_psnr, val_psnrs, val_losses, iternums = validate_model(
                     i,
                     train_psnrs,
                     val_psnrs,
+                    val_losses,
                     iternums,
                     data_loader,
                     renderer,
@@ -173,6 +182,7 @@ def training_session(
                     fine_model,
                     nerf_sampler_fine,
                     batch_chunksize,
+                    show_graph=False,
                 )
 
         # Stop training if warmup issues with psnr metric
@@ -185,7 +195,7 @@ def training_session(
                 print(f"Train PSNR flatlined at {psnr} for {warmup_stopper.patience} iters. Stopping...")
                 return False, train_psnrs, val_psnrs
 
-    return True, train_psnrs, val_psnrs
+    return True, train_psnrs, val_psnrs, val_losses
 
 
 def train(args: dict) -> bool:
@@ -237,7 +247,7 @@ def train(args: dict) -> bool:
             args["lr"],
         )
 
-        success, train_psnrs, val_psnrs = training_session(
+        success, train_psnrs, val_psnrs, val_losses = training_session(
             device,
             data_loader,
             args["n_iters"],
@@ -259,7 +269,14 @@ def train(args: dict) -> bool:
 
         if success and val_psnrs[-1] >= args["warmup_min_fitness"]:
             print("Training successful!")
-            # TODO M: Store model params?
+            write_dict_to_file(
+                args["out_path"] + "train_results.txt",
+                {"train_psnr": str(train_psnrs[-1]), "val_psnr": str(val_psnrs[-1]), "val_loss": str(val_losses[-1])},
+            )
+
+            # M: Store model params
+            torch.save(model.state_dict(), args["out_path"] + "nerf.pt")
+            torch.save(fine_model.state_dict(), args["out_path"] + "nerf-fine.pt")
             break
 
     print("Training complete!")

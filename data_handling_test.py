@@ -224,7 +224,7 @@ def debug_NeRF_forward_pass():
 
 
 def debug_model_init():
-    experiment_file = "experiments/testexperiment.txt"
+    experiment_file = "experiments/test_exp/testexperiment.txt"
     args = dict_from_file(experiment_file)
 
     (
