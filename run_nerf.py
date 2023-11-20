@@ -83,7 +83,10 @@ def config_parser() -> dict:
     parser.add_argument(
         "--center_crop_iters", type=int, default=50, help="Debugging: Stop cropping center after this many epochs"
     )
-    parser.add_argument("--display_rate", type=int, default=25, help="Debugging: Display test output every X epochs")
+    parser.add_argument("--display_rate", type=int, default=50, help="Debugging: Display test output every X epochs")
+    parser.add_argument(
+        "--model_storage_rate", type=int, default=5001, help="Debugging: Store model params every X epochs"
+    )
 
     # Early Stopping
     parser.add_argument("--warmup_iters", type=int, default=100, help="Number of iterations during warmup phase")

@@ -102,6 +102,8 @@ def training_session(
     warmup_iters: int = 100,
     warmup_min_fitness: float = 10.0,
     display_rate: int = 100,
+    model_storage_rate: int = 5001,
+    out_path: str = "./",
 ) -> Tuple[bool, list, list, list]:
     # M: Gather and shuffle rays across all images.
     if not one_image_per_step:
@@ -185,6 +187,10 @@ def training_session(
                     show_graph=False,
                 )
 
+        if i != 0 and i % model_storage_rate == 0:
+            torch.save(model.state_dict(), out_path + "Iter_" + str(i) + "_nerf.pt")
+            torch.save(fine_model.state_dict(), out_path + "Iter_" + str(i) + "_nerf-fine.pt")
+
         # Stop training if warmup issues with psnr metric
         if i == warmup_iters - 1:
             if val_psnr != 0.0 and val_psnr < warmup_min_fitness:
@@ -265,6 +271,8 @@ def train(args: dict) -> bool:
             args["warmup_iters"],
             args["warmup_min_fitness"],
             args["display_rate"],
+            args["model_storage_rate"],
+            args["out_path"],
         )
 
         if success and val_psnrs[-1] >= args["warmup_min_fitness"]:
