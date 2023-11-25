@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 
 from model.RadianceFieldEncoder import RadianceFieldEncoder
 from training.early_stopping import EarlyStopping
@@ -13,6 +14,8 @@ from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rays_rgb_dataset import Ray_Rgb_Dataset
 from volume_handling.rendering import Differentiable_Volume_Renderer
 from volume_handling.sampling import NeRF_Sampler
+
+writer: SummaryWriter = None
 
 
 def validate_model(
@@ -54,17 +57,24 @@ def validate_model(
     loss = torch.nn.functional.mse_loss(rgb_predicted, testimg.reshape(-1, 3))
     val_losses.append(loss.item())
     print("Validation Loss:", loss.item())
+    writer.add_scalar("Loss/val", loss.item(), index)
 
     val_psnr = -10.0 * torch.log10(loss)
     val_psnrs.append(val_psnr.item())
     print("Validation psnr:", val_psnr.item())
+    writer.add_scalar("PSNR/val", val_psnr.item(), index)
+
     iternums.append(index)
+
+    predicted_img = rgb_predicted.reshape([height, width, 3])
+    writer.add_image("Predicted Image", predicted_img.permute(2, 0, 1), index)
+    writer.add_image("Target Image", testimg.permute(2, 0, 1), index)
 
     # Plot example outputs
     if show_graph:
         fig, ax = plt.subplots(1, 4, figsize=(24, 4), gridspec_kw={"width_ratios": [1, 1, 1, 3]})
-        ax[0].imshow(rgb_predicted.reshape([height, width, 3]).detach().cpu().numpy())
-        ax[0].set_title(f"Iteration: {index}")
+        ax[0].imshow(predicted_img.detach().cpu().numpy())
+        ax[0].set_title(f"Prediction Iteration: {index}")
         ax[1].imshow(testimg.detach().cpu().numpy())
         ax[1].set_title(f"Target")
         ax[2].plot(range(0, index + 1), train_psnrs, "r")
@@ -163,6 +173,8 @@ def training_session(
 
         psnr = -10.0 * torch.log10(loss)
         train_psnrs.append(psnr.item())
+        writer.add_scalar("Loss/train", loss.item(), i)
+        writer.add_scalar("PSNR/train", psnr.item(), i)
 
         # Validate model.
         val_psnr = 0.0
@@ -193,8 +205,8 @@ def training_session(
 
         # Stop training if warmup issues with psnr metric
         if i == warmup_iters - 1:
-            if val_psnr != 0.0 and val_psnr < warmup_min_fitness:
-                print(f"Val PSNR {val_psnr} below warmup_min_fitness {warmup_min_fitness}. Stopping...")
+            if psnr != 0.0 and psnr < warmup_min_fitness:
+                print(f"PSNR {val_psnr} below warmup_min_fitness {warmup_min_fitness}. Stopping...")
                 return False, train_psnrs, val_psnrs
         elif i < warmup_iters:
             if warmup_stopper is not None and warmup_stopper(i, psnr):
@@ -216,6 +228,12 @@ def train(args: dict) -> bool:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running on: {device}")
+
+    global writer
+    if args["tensorboard_log_dir"]:
+        writer = SummaryWriter(args["tensorboard_log_dir"] + args["expname"])
+    else:
+        writer = SummaryWriter("runs/" + args["expname"])
 
     success = False
     for i in range(args["n_restarts"]):
