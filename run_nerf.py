@@ -73,9 +73,7 @@ def config_parser() -> dict:
 
     # Training
     parser.add_argument("--n_iters", type=int, default=10000, help="Number of iterations")
-    parser.add_argument(
-        "--batch_size", type=float, default=2**14, help="Number of rays per gradient step (power of 2)"
-    )
+    parser.add_argument("--batch_size", type=int, default=2**14, help="Number of rays per gradient step (power of 2)")
     parser.add_argument(
         "--one_image_per_step", type=str2bool, default="False", help="One image per gradient step (disables batching)"
     )

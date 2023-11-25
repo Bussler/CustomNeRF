@@ -3,11 +3,23 @@ from torch.utils.data.dataset import Dataset
 
 
 class Ray_Rgb_Dataset(Dataset):
+    """Dataset for getting batches of rays (origin, direction) and corresponding rgb values.
+
+    Args:
+        Dataset (_type_): _description_
+    """
+
     def __init__(
         self,
         rays_rgb: torch.Tensor,
         batch_size: int = 2**15,
     ):
+        """_summary_
+
+        Args:
+            rays_rgb (torch.Tensor): Tensor of all available rays (origin, direction) and corresponding rgb values for training.
+            batch_size (int, optional): Size of batches for training. Defaults to 2**15.
+        """
         self.rays_rgb = rays_rgb
         self.batch_size = batch_size
 

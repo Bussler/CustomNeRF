@@ -105,6 +105,7 @@ def training_session(
     nerf_sampler_coarse: NeRF_Sampler,
     fine_model: RadianceFieldEncoder = None,
     nerf_sampler_fine: NeRF_Sampler = None,
+    batch_size: int = 2**15,
     batch_chunksize: int = 2**15,
     one_image_per_step: bool = False,
     center_crop: bool = True,
@@ -118,7 +119,7 @@ def training_session(
     # M: Gather and shuffle rays across all images.
     if not one_image_per_step:
         rays_rgb = data_loader.get_training_rays()
-        rays_rgb_dataset = Ray_Rgb_Dataset(rays_rgb)
+        rays_rgb_dataset = Ray_Rgb_Dataset(rays_rgb, batch_size)
 
     i_batch = 0
     train_psnrs = []
@@ -141,7 +142,6 @@ def training_session(
             rays_d = rays_d.reshape([-1, 3])
         else:
             rays_o, rays_d, target_img, i_batch = rays_rgb_dataset[i_batch]
-            height, width = target_img.shape[:2]  # TODO M: Check if this is correct: make image 2D again? Atm: id 1D
         target_img = target_img.reshape([-1, 3])
 
         # Forward pass through model.
@@ -207,11 +207,11 @@ def training_session(
         if i == warmup_iters - 1:
             if psnr != 0.0 and psnr < warmup_min_fitness:
                 print(f"PSNR {val_psnr} below warmup_min_fitness {warmup_min_fitness}. Stopping...")
-                return False, train_psnrs, val_psnrs
+                return False, train_psnrs, val_psnrs, val_losses
         elif i < warmup_iters:
             if warmup_stopper is not None and warmup_stopper(i, psnr):
                 print(f"Train PSNR flatlined at {psnr} for {warmup_stopper.patience} iters. Stopping...")
-                return False, train_psnrs, val_psnrs
+                return False, train_psnrs, val_psnrs, val_losses
 
     return True, train_psnrs, val_psnrs, val_losses
 
@@ -282,6 +282,7 @@ def train(args: dict) -> bool:
             nerf_sampler_coarse,
             fine_model,
             nerf_sampler_fine,
+            args["batch_size"],
             args["chunksize"],
             args["one_image_per_step"],
             args["center_crop"],

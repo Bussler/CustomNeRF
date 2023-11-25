@@ -1,12 +1,10 @@
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
 from model.feature_embedding import Embedder, PositionalEmbedding
-
-from .sampling import NeRF_Sampler, NeRF_Stratified_Sampler
 
 
 class NeRF_Data_Loader:
