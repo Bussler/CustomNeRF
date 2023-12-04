@@ -4,16 +4,20 @@ from typing import Callable, List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import typer
 from mpl_toolkits.mplot3d import axes3d
 from tqdm import trange
+from typing_extensions import Annotated
 
 from model.feature_embedding import PositionalEmbedding
 from training.train import train
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.sampling import NeRF_Stratified_Sampler
 
+app = typer.Typer()
 
-def config_parser() -> dict:
+
+def config_parser_training() -> dict:
     import configargparse
 
     # Create a function to convert the argument to a boolean
@@ -99,9 +103,16 @@ def config_parser() -> dict:
     return parser.parse_args()
 
 
-if __name__ == "__main__":
-    args = vars(config_parser())
-
-    # TODO M: add different parser for training, inference (load model, generate video...)
-
+@app.command()
+def training(config: Annotated[str, typer.Argument(help="The path to the config file")]):
+    args = vars(config_parser_training())
     success = train(args)
+
+
+@app.command()
+def inference():
+    pass
+
+
+if __name__ == "__main__":
+    app()
