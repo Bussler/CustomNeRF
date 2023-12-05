@@ -10,6 +10,7 @@ from tqdm import trange
 from typing_extensions import Annotated
 
 from model.feature_embedding import PositionalEmbedding
+from training.inference.infer import infer
 from training.train import train
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.sampling import NeRF_Stratified_Sampler
@@ -111,7 +112,8 @@ def training(config: Annotated[str, typer.Argument(help="The path to the config 
 
 @app.command()
 def inference():
-    pass
+    args = vars(config_parser_training())
+    success = infer(args)
 
 
 if __name__ == "__main__":

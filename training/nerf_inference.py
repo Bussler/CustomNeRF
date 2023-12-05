@@ -30,7 +30,7 @@ def nerf_inference(
         renderer (Differentiable_Volume_Renderer): differentiable volume renderer to interpret the raw NeRF outputs
 
     Returns:
-        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: _description_
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: rgb_map, depth_map, acc_map (accumulated weights along ray), weights
     """
     # Batchify the points and put them through the embedding function
     batches = data_loader.prepare_position_chunks(query_points, chunksize=chunksize)
@@ -82,7 +82,7 @@ def nerf_forward(
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
-        dict containing rgb_map, depth_map, acc_map, weights (where to focus sampling, points of high alpha)
+        dict containing rgb_map, depth_map, acc_map (accumulated weights along ray), weights (where to focus sampling, points of high alpha)
     """
     # Sample query points along each ray.
     query_points, z_vals = sampler_coarse.sample(rays_o, rays_d)

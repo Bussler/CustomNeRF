@@ -128,3 +128,83 @@ def init_models(
     warmup_stopper = EarlyStopping(patience=50)
 
     return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, renderer, optimizer, warmup_stopper
+
+
+def load_model(
+    device: torch.device,
+    data_path: str = "data/tiny_nerf_data.npz",
+    near: float = 2.0,
+    far: float = 6.0,
+    n_training: int = 100,
+    use_viewdirs: bool = True,
+    d_input: int = 3,
+    n_freqs: int = 10,
+    n_freqs_views: int = 4,
+    log_space: bool = True,
+    n_samples: int = 64,
+    perturb: bool = True,
+    inverse_depth: bool = False,
+    use_fine_model: bool = True,
+    n_layers: int = 2,
+    d_Weights: int = 128,
+    n_layers_fine: int = 6,
+    d_Weights_fine: int = 128,
+    skip: Tuple[int] = (),
+) -> Tuple[
+    RadianceFieldEncoder,
+    RadianceFieldEncoder,
+    NeRF_Data_Loader,
+    NeRF_Data_Loader,
+    NeRF_Sampler,
+    NeRF_Sampler,
+    Differentiable_Volume_Renderer,
+]:
+    # Embedders
+    encoder = PositionalEmbedding(n_freqs, d_input, log_space=log_space)
+
+    # View direction embedder
+    if use_viewdirs:
+        encoder_viewdirs = PositionalEmbedding(n_freqs_views, d_input, log_space=log_space)
+        d_viewdirs = encoder_viewdirs.out_dim
+    else:
+        encoder_viewdirs = None
+        d_viewdirs = None
+
+    # Data Loader
+    data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, device, n_training, near, far)
+
+    # Samplers
+    nerf_sampler_coarse = NeRF_Stratified_Sampler(
+        near=data_loader.near,
+        far=data_loader.far,
+        n_samples=n_samples,
+        perturb=perturb,
+        inverse_depth=inverse_depth,
+    )
+
+    if use_fine_model:
+        nerf_sampler_fine = NeRF_Hierarchical_Sampler(
+            n_samples=n_samples,
+            perturb=perturb,
+        )
+    else:
+        nerf_sampler_fine = None
+
+    # Renderer
+    renderer = Differentiable_Volume_Renderer()
+
+    # TODO load model params from checkpoint
+    # Models
+    model = NeRF(encoder.out_dim, n_layers=n_layers, d_Weights=d_Weights, skip=skip, d_viewdirs=d_viewdirs)
+    model.to(device)
+    model_params = list(model.parameters())
+    if use_fine_model:
+        fine_model = NeRF(
+            encoder.out_dim, n_layers=n_layers_fine, d_Weights=d_Weights_fine, skip=skip, d_viewdirs=d_viewdirs
+        )
+        fine_model.to(device)
+        model_params = model_params + list(fine_model.parameters())
+    else:
+        fine_model = None
+
+    return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, renderer
