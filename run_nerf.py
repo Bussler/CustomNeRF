@@ -112,7 +112,12 @@ def training(config: Annotated[str, typer.Argument(help="The path to the config 
 
 @app.command()
 def inference():
+    # TODO M: get specific args for inference
     args = vars(config_parser_training())
+
+    args["model_path"] = "experiments/test_exp/Iter_10002_nerf.pt"
+    args["fine_model_path"] = "experiments/test_exp/Iter_10002_nerf-fine.pt"
+
     success = infer(args)
 
 

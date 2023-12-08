@@ -133,6 +133,8 @@ def init_models(
 def load_model(
     device: torch.device,
     data_path: str = "data/tiny_nerf_data.npz",
+    model_path: str = "experiments/test_exp/nerf.pt",
+    fine_model_path: str = "experiments/test_exp/nerf-fine.pt",
     near: float = 2.0,
     far: float = 6.0,
     n_training: int = 100,
@@ -193,17 +195,20 @@ def load_model(
     # Renderer
     renderer = Differentiable_Volume_Renderer()
 
-    # TODO load model params from checkpoint
-    # Models
+    # Models: load from checkpoint
     model = NeRF(encoder.out_dim, n_layers=n_layers, d_Weights=d_Weights, skip=skip, d_viewdirs=d_viewdirs)
     model.to(device)
-    model_params = list(model.parameters())
+    checkpoint = torch.load(model_path)
+    model.load_state_dict(checkpoint)
+
     if use_fine_model:
         fine_model = NeRF(
             encoder.out_dim, n_layers=n_layers_fine, d_Weights=d_Weights_fine, skip=skip, d_viewdirs=d_viewdirs
         )
         fine_model.to(device)
-        model_params = model_params + list(fine_model.parameters())
+
+        fine_checkpoint = torch.load(fine_model_path)
+        fine_model.load_state_dict(fine_checkpoint)
     else:
         fine_model = None
 
