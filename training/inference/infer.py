@@ -1,13 +1,14 @@
+import imageio
 import torch
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
+from training.inference.render_path_generator import generate_circular_renderpath
 from training.nerf_inference import nerf_forward
 from training.setup_stuff import load_model
 
 
 def infer(args: dict) -> bool:
-    # TODO M: create poses
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running on: {device}")
 
@@ -35,35 +36,45 @@ def infer(args: dict) -> bool:
         args["skip"],
     )
 
+    # TODO M: create poses
+    testimg, testpose = (
+        data_loader.train_images[0:1].squeeze(0),
+        data_loader.train_poses[0:1].squeeze(0),
+    )
+    render_path = generate_circular_renderpath(data_loader.train_poses[0:1].cpu(), data_loader.focal.cpu())
+    images = []
+
     model.eval()
     with torch.no_grad():
         # infer model: go over all poses from render path and generate images
-        testimg, testpose = data_loader.get_validation_image_pose()  # TODO M: get later from the generated paths
+        for pose in tqdm(render_path):
+            testpose = pose.to(device)
 
-        height, width = testimg.shape[:2]
-        rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, testpose)
-        rays_o = rays_o.reshape([-1, 3])
-        rays_d = rays_d.reshape([-1, 3])
+            height, width = testimg.shape[:2]
+            rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, testpose)
+            rays_o = rays_o.reshape([-1, 3])
+            rays_d = rays_d.reshape([-1, 3])
 
-        outputs = nerf_forward(
-            rays_o,
-            rays_d,
-            data_loader,
-            renderer,
-            model,
-            nerf_sampler_coarse,
-            fine_model,
-            nerf_sampler_fine,
-            args["chunksize"],
-        )
+            outputs = nerf_forward(
+                rays_o,
+                rays_d,
+                data_loader,
+                renderer,
+                model,
+                nerf_sampler_coarse,
+                fine_model,
+                nerf_sampler_fine,
+                args["chunksize"],
+            )
 
-    rgb_predicted = outputs["rgb_map"]
+            rgb_predicted = outputs["rgb_map"]
+            predicted_img = rgb_predicted.reshape([height, width, 3])
+            images.append(predicted_img.detach().cpu().numpy())
 
-    predicted_img = rgb_predicted.reshape([height, width, 3])
-
-    imgplot = plt.imshow(predicted_img.detach().cpu().numpy())
-    plt.show()
+            # imgplot = plt.imshow(predicted_img.detach().cpu().numpy())
+            # plt.show()
 
     # turn images into video/ gif
+    imageio.mimsave("output.gif", images, fps=30)
 
     return True
