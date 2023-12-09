@@ -1,4 +1,5 @@
 import imageio
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -41,7 +42,9 @@ def infer(args: dict) -> bool:
         data_loader.train_images[0:1].squeeze(0),
         data_loader.train_poses[0:1].squeeze(0),
     )
-    render_path = generate_circular_renderpath(data_loader.train_poses[0:1].cpu(), data_loader.focal.cpu())
+    render_path = generate_circular_renderpath(
+        data_loader.train_poses[0:1].cpu(), data_loader.focal.cpu(), 120, 2, 0.1, 0.1
+    )
     images = []
 
     model.eval()
@@ -69,10 +72,10 @@ def infer(args: dict) -> bool:
 
             rgb_predicted = outputs["rgb_map"]
             predicted_img = rgb_predicted.reshape([height, width, 3])
-            images.append(predicted_img.detach().cpu().numpy())
-
-            # imgplot = plt.imshow(predicted_img.detach().cpu().numpy())
-            # plt.show()
+            predicted_img = (predicted_img.detach().cpu().numpy() * 255).astype(
+                np.uint8
+            )  # Convert from float in [0, 1] to uint in [0, 255]
+            images.append(predicted_img)
 
     # turn images into video/ gif
     imageio.mimsave("output.gif", images, fps=30)
