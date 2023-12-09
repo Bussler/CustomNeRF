@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 from model.feature_embedding import Embedder, PositionalEmbedding
+from volume_handling.sampling import NeRF_Ray_Generator
 
 
 class NeRF_Data_Loader:
@@ -70,44 +71,6 @@ class NeRF_Data_Loader:
         self.validation_poses = torch.from_numpy(self.data["poses"][n_training:]).to(device)
         self.focal = torch.from_numpy(self.data["focal"]).to(device)
 
-    def get_rays(
-        self, height: int, width: int, focal_length: float, c2w: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Find origin and direction of rays through every pixel and camera origin.
-
-        Args:
-            height: int: height of input image
-            width: int: width of input image
-            focal_length: int: focal length of camera model
-            c2w: torch.Tensor: camera to world matrix, camera pose to get projection lines for each image pixel
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Ray Origin (for each pixel, xyz), Ray Direction (for each pixel, xyz for dir)
-        """
-
-        # Apply pinhole camera model to gather directions at each pixel
-        i, j = torch.meshgrid(
-            torch.arange(width, dtype=torch.float32, device=c2w.device),
-            torch.arange(height, dtype=torch.float32, device=c2w.device),
-            indexing="ij",
-        )
-        i, j = i.transpose(-1, -2), j.transpose(-1, -2)
-        directions = torch.stack(
-            [
-                (i - width * 0.5) / focal_length,
-                -(j - height * 0.5) / focal_length,
-                -torch.ones_like(i),
-            ],
-            dim=-1,
-        )
-
-        # Apply camera pose to directions
-        rays_d = torch.sum(directions[..., None, :] * c2w[:3, :3], dim=-1)
-
-        # Origin is same for all pixels/ directions (the optical center)
-        rays_o = c2w[:3, -1].expand(rays_d.shape)
-        return rays_o, rays_d
-
     def get_training_rays(self) -> torch.Tensor:
         """Generate a tensor of all rays o, d, rgb values for training.
 
@@ -115,7 +78,10 @@ class NeRF_Data_Loader:
             torch.Tensor: shuffled tensor of rays o, d, rgb values in shape [n_training*width*height, 3, 3]
         """
         all_rays = torch.stack(
-            [torch.stack(self.get_rays(self.height, self.width, self.focal, p), 0) for p in self.train_poses],
+            [
+                torch.stack(NeRF_Ray_Generator.get_rays(self.height, self.width, self.focal, p), 0)
+                for p in self.train_poses
+            ],
             0,
         )  # M: stack for all training images the rays_o and rays_d; shape [n_training, 2, width, height, 3]
         rays_rgb = torch.cat(

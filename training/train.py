@@ -13,7 +13,7 @@ from training.utils import crop_center, plot_samples, write_dict_to_file
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rays_rgb_dataset import Ray_Rgb_Dataset
 from volume_handling.rendering import Differentiable_Volume_Renderer
-from volume_handling.sampling import NeRF_Sampler
+from volume_handling.sampling import NeRF_Ray_Generator, NeRF_Sampler
 
 writer: SummaryWriter = None
 
@@ -38,7 +38,7 @@ def validate_model(
     testimg, testpose = data_loader.get_validation_image_pose()
 
     height, width = testimg.shape[:2]
-    rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, testpose)
+    rays_o, rays_d = NeRF_Ray_Generator.get_rays(height, width, data_loader.focal, testpose)
     rays_o = rays_o.reshape([-1, 3])
     rays_d = rays_d.reshape([-1, 3])
     outputs = nerf_forward(
@@ -137,7 +137,7 @@ def training_session(
                 target_img = crop_center(target_img)
             height, width = target_img.shape[:2]
             target_pose = torch.from_numpy(data_loader.poses[target_img_idx]).to(device)
-            rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, target_pose)
+            rays_o, rays_d = NeRF_Ray_Generator.get_rays(height, width, data_loader.focal, target_pose)
             rays_o = rays_o.reshape([-1, 3])
             rays_d = rays_d.reshape([-1, 3])
         else:

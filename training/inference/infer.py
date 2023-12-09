@@ -7,6 +7,7 @@ from tqdm import tqdm
 from training.inference.render_path_generator import generate_circular_renderpath
 from training.nerf_inference import nerf_forward
 from training.setup_stuff import load_model
+from volume_handling.sampling import NeRF_Ray_Generator
 
 
 def infer(args: dict) -> bool:
@@ -54,7 +55,7 @@ def infer(args: dict) -> bool:
             testpose = pose.to(device)
 
             height, width = testimg.shape[:2]
-            rays_o, rays_d = data_loader.get_rays(height, width, data_loader.focal, testpose)
+            rays_o, rays_d = NeRF_Ray_Generator.get_rays(height, width, data_loader.focal, testpose)
             rays_o = rays_o.reshape([-1, 3])
             rays_d = rays_d.reshape([-1, 3])
 

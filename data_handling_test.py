@@ -11,7 +11,11 @@ from training.setup_stuff import init_models
 from training.utils import dict_from_file
 from volume_handling.data_handling import NeRF_Data_Loader
 from volume_handling.rendering import Differentiable_Volume_Renderer
-from volume_handling.sampling import NeRF_Hierarchical_Sampler, NeRF_Stratified_Sampler
+from volume_handling.sampling import (
+    NeRF_Hierarchical_Sampler,
+    NeRF_Ray_Generator,
+    NeRF_Stratified_Sampler,
+)
 
 nerf_data_loader = NeRF_Data_Loader("data/tiny_nerf_data.npz")
 device = torch.device("cpu")  # can also try "cuda"
@@ -63,7 +67,7 @@ def debug_rays_generation(
     testpose = torch.from_numpy(testpose).to(device)
 
     with torch.no_grad():
-        ray_origin, ray_direction = nerf_data_loader.get_rays(
+        ray_origin, ray_direction = NeRF_Ray_Generator.get_rays(
             nerf_data_loader.height, nerf_data_loader.width, nerf_data_loader.focal, testpose
         )
 
@@ -179,7 +183,7 @@ def debug_NeRF_forward_pass():
     testpose = torch.from_numpy(testpose).to(device)
 
     with torch.no_grad():
-        ray_origin, ray_direction = nerf_data_loader.get_rays(
+        ray_origin, ray_direction = NeRF_Ray_Generator.get_rays(
             nerf_data_loader.height, nerf_data_loader.width, nerf_data_loader.focal, testpose
         )
 

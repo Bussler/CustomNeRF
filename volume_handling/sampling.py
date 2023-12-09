@@ -4,6 +4,50 @@ from typing import Optional, Tuple
 import torch
 
 
+class NeRF_Ray_Generator:
+    def __init__(self) -> None:
+        super().__init__()
+
+    @classmethod
+    def get_rays(
+        self, height: int, width: int, focal_length: float, c2w: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Find origin and direction of rays through every pixel and camera origin.
+
+        Args:
+            height: int: height of input image
+            width: int: width of input image
+            focal_length: int: focal length of camera model
+            c2w: torch.Tensor: camera to world matrix, camera pose to get projection lines for each image pixel
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Ray Origin (for each pixel, xyz), Ray Direction (for each pixel, xyz for dir)
+        """
+
+        # Apply pinhole camera model to gather directions at each pixel
+        i, j = torch.meshgrid(
+            torch.arange(width, dtype=torch.float32, device=c2w.device),
+            torch.arange(height, dtype=torch.float32, device=c2w.device),
+            indexing="ij",
+        )
+        i, j = i.transpose(-1, -2), j.transpose(-1, -2)
+        directions = torch.stack(
+            [
+                (i - width * 0.5) / focal_length,
+                -(j - height * 0.5) / focal_length,
+                -torch.ones_like(i),
+            ],
+            dim=-1,
+        )
+
+        # Apply camera pose to directions
+        rays_d = torch.sum(directions[..., None, :] * c2w[:3, :3], dim=-1)
+
+        # Origin is same for all pixels/ directions (the optical center)
+        rays_o = c2w[:3, -1].expand(rays_d.shape)
+        return rays_o, rays_d
+
+
 class NeRF_Sampler(ABC):
     def __init__(
         self,
