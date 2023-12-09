@@ -141,7 +141,7 @@ def training_session(
             rays_o = rays_o.reshape([-1, 3])
             rays_d = rays_d.reshape([-1, 3])
         else:
-            rays_o, rays_d, target_img, i_batch = rays_rgb_dataset[i_batch]
+            rays_o, rays_d, target_img = rays_rgb_dataset[i_batch]
         target_img = target_img.reshape([-1, 3])
 
         # Forward pass through model.

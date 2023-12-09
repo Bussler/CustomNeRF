@@ -31,6 +31,7 @@ def config_parser_training() -> dict:
             raise configargparse.ArgumentTypeError("Boolean value expected.")
 
     parser = configargparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, required=True, help="mode of operation: 'train' or 'inference'")
     parser.add_argument("--config", is_config_file=True, help="config file path")
     parser.add_argument("--expname", type=str, required=True, help="name of your experiment; is required")
     parser.add_argument("--data_path", type=str, required=True, help="path to the trained dataset; is required")
@@ -104,22 +105,16 @@ def config_parser_training() -> dict:
     return parser.parse_args()
 
 
-@app.command()
-def training(config: Annotated[str, typer.Argument(help="The path to the config file")]):
-    args = vars(config_parser_training())
-    success = train(args)
-
-
-@app.command()
-def inference():
-    # TODO M: get specific args for inference
+def main():
     args = vars(config_parser_training())
 
-    args["model_path"] = "experiments/test_exp/Iter_10002_nerf.pt"
-    args["fine_model_path"] = "experiments/test_exp/Iter_10002_nerf-fine.pt"
-
-    success = infer(args)
+    if args["mode"] == "train":
+        success = train(args)
+    if args["mode"] == "inference":
+        args["model_path"] = "experiments/test_exp/Iter_10002_nerf.pt"
+        args["fine_model_path"] = "experiments/test_exp/Iter_10002_nerf-fine.pt"
+        success = infer(args)
 
 
 if __name__ == "__main__":
-    app()
+    main()

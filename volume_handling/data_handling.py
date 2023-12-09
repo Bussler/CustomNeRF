@@ -19,7 +19,7 @@ class NeRF_Data_Loader:
         far=6.0,
     ) -> None:
         # load data images
-        self.data = np.load(data_path)
+        self.data = self.load_data(data_path)
         self.images = self.data["images"]
         self.train_images = []
         self.validation_images = []
@@ -51,6 +51,11 @@ class NeRF_Data_Loader:
         self.device = device
         self.n_training = n_training
         self.data_to_device(self.device, self.n_training)
+
+    def load_data(self, data_path: str) -> None:
+        # TODO M: load data from npz file or from folder
+        data = np.load(data_path)
+        return data
 
     def data_to_device(self, device: torch.device, n_training: int = 100):
         """move data (images, poses, focal) to torch device (cpu or cuda)
