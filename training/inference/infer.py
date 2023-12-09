@@ -14,7 +14,7 @@ def infer(args: dict) -> bool:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running on: {device}")
 
-    model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, renderer = load_model(
+    model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine = load_model(
         device,
         args["data_path"],
         args["model_path"],
@@ -63,7 +63,6 @@ def infer(args: dict) -> bool:
                 rays_o,
                 rays_d,
                 data_loader,
-                renderer,
                 model,
                 nerf_sampler_coarse,
                 fine_model,

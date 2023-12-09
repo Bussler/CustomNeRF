@@ -10,7 +10,7 @@ class NeRF_Ray_Generator:
 
     @classmethod
     def get_rays(
-        self, height: int, width: int, focal_length: float, c2w: torch.Tensor
+        cls, height: int, width: int, focal_length: float, c2w: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Find origin and direction of rays through every pixel and camera origin.
 

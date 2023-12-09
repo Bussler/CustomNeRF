@@ -170,8 +170,7 @@ def debug_NeRF_renderer():
         ]
     ).unsqueeze(0)
 
-    renderer = Differentiable_Volume_Renderer()
-    rgb_map, depth_map, acc_map, weights = renderer.raw_to_outputs(raw, z_vals, ray_dir)
+    rgb_map, depth_map, acc_map, weights = Differentiable_Volume_Renderer.raw_to_outputs(raw, z_vals, ray_dir)
 
     print("Testrendering done")
     pass
@@ -189,8 +188,6 @@ def debug_NeRF_forward_pass():
 
     rays_o = ray_origin.view([-1, 3])
     rays_d = ray_direction.view([-1, 3])
-
-    renderer = Differentiable_Volume_Renderer()
 
     d_pos = nerf_data_loader.pos_embedder.out_dim
     d_vdir = nerf_data_loader.viewdir_embedder.out_dim
@@ -217,7 +214,6 @@ def debug_NeRF_forward_pass():
         rays_o,
         rays_d,
         nerf_data_loader,
-        renderer,
         nerf_model_coarse,
         nerf_sampler_coarse,
         fine_model=nerf_model_fine,

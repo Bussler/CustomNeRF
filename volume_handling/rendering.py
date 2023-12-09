@@ -19,7 +19,8 @@ class Differentiable_Volume_Renderer:
     def __init__(self) -> None:
         pass
 
-    def cumprod_exclusive(self, tensor: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def cumprod_exclusive(tensor: torch.Tensor) -> torch.Tensor:
         r"""
         Calculate cumulative product of a tensor: yi = x1 * x2 * x3 * ... xi.
 
@@ -44,8 +45,9 @@ class Differentiable_Volume_Renderer:
 
         return cumprod
 
+    @classmethod
     def raw_to_outputs(
-        self,
+        cls,
         raw: torch.Tensor,
         z_vals: torch.Tensor,
         rays_d: torch.Tensor,
@@ -85,7 +87,7 @@ class Differentiable_Volume_Renderer:
 
         # Compute weight for RGB of each sample along each ray. [n_rays, n_samples]
         # The higher the alpha, the lower subsequent weights are driven, since an opaque surface was reached.
-        weights = alpha * self.cumprod_exclusive(1.0 - alpha + 1e-10)
+        weights = alpha * cls.cumprod_exclusive(1.0 - alpha + 1e-10)
 
         # Compute weighted RGB map: Weight predicted colors by alpha values and sum to pixel value.
         rgb = torch.sigmoid(raw[..., :3])  # [n_rays, n_samples, 3]

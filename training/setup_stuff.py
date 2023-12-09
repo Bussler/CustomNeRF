@@ -42,7 +42,6 @@ def init_models(
     NeRF_Data_Loader,
     NeRF_Sampler,
     NeRF_Sampler,
-    Differentiable_Volume_Renderer,
     torch.optim.Optimizer,
     EarlyStopping,
 ]:
@@ -105,9 +104,6 @@ def init_models(
     else:
         nerf_sampler_fine = None
 
-    # Renderer
-    renderer = Differentiable_Volume_Renderer()
-
     # Models
     model = NeRF(encoder.out_dim, n_layers=n_layers, d_Weights=d_Weights, skip=skip, d_viewdirs=d_viewdirs)
     model.to(device)
@@ -127,7 +123,7 @@ def init_models(
     # Early Stopping
     warmup_stopper = EarlyStopping(patience=50)
 
-    return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, renderer, optimizer, warmup_stopper
+    return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, optimizer, warmup_stopper
 
 
 def load_model(
@@ -152,15 +148,7 @@ def load_model(
     n_layers_fine: int = 6,
     d_Weights_fine: int = 128,
     skip: Tuple[int] = (),
-) -> Tuple[
-    RadianceFieldEncoder,
-    RadianceFieldEncoder,
-    NeRF_Data_Loader,
-    NeRF_Data_Loader,
-    NeRF_Sampler,
-    NeRF_Sampler,
-    Differentiable_Volume_Renderer,
-]:
+) -> Tuple[RadianceFieldEncoder, RadianceFieldEncoder, NeRF_Data_Loader, NeRF_Data_Loader, NeRF_Sampler, NeRF_Sampler,]:
     # Embedders
     encoder = PositionalEmbedding(n_freqs, d_input, log_space=log_space)
 
@@ -192,9 +180,6 @@ def load_model(
     else:
         nerf_sampler_fine = None
 
-    # Renderer
-    renderer = Differentiable_Volume_Renderer()
-
     # Models: load from checkpoint
     model = NeRF(encoder.out_dim, n_layers=n_layers, d_Weights=d_Weights, skip=skip, d_viewdirs=d_viewdirs)
     model.to(device)
@@ -212,4 +197,4 @@ def load_model(
     else:
         fine_model = None
 
-    return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine, renderer
+    return model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine
