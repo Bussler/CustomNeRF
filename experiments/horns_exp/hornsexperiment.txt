@@ -1,11 +1,9 @@
-expname = test_exp_fullTraining
-data_path = "data/tiny_nerf_data.npz"
-poses_bounds = False
-out_path = experiments/test_exp/
+expname = horns_exp_fullTraining
+data_path = "data/horns"
+poses_bounds = True
+out_path = experiments/horns_exp/
 tensorboard_log_dir = tensorboard_runs/
-near = 2.0
-far = 6.0
-n_training = 100 # Number of images used for training, the rest are used for validation
+n_training = 55 # Number of images used for training, the rest are used for validation
 
 # Encoders
 d_input = 3           # Number of input dimensions
