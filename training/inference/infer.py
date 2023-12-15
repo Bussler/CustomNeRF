@@ -17,6 +17,7 @@ def infer(args: dict) -> bool:
     model, fine_model, data_loader, nerf_sampler_coarse, nerf_sampler_fine = load_model(
         device,
         args["data_path"],
+        args["poses_bounds"],
         args["model_path"],
         args["fine_model_path"],
         args["near"],

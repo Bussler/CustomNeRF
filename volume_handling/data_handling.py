@@ -6,12 +6,14 @@ import torch
 
 from model.feature_embedding import Embedder, PositionalEmbedding
 from volume_handling.sampling import NeRF_Ray_Generator
+from volume_handling.utils import load_npy_data
 
 
 class NeRF_Data_Loader:
     def __init__(
         self,
         data_path="data/tiny_nerf_data.npz",
+        poses_bounds=False,
         pos_embedder: Embedder = None,
         viewdir_embedder: Embedder = None,
         device: torch.device = torch.device("cpu"),
@@ -20,23 +22,32 @@ class NeRF_Data_Loader:
         far=6.0,
     ) -> None:
         # load data images
-        self.data = self.load_data(data_path)
+        self.data = self.load_data(data_path, boundsfile=poses_bounds)
         self.images = self.data["images"]
         self.train_images = []
         self.validation_images = []
         self.poses = self.data["poses"]
         self.train_poses = []
         self.validation_poses = []
-        self.focal = self.data["focal"]
 
         # camera parameters
+        if "hwf" in self.data:
+            H, W, self.focal = self.data["hwf"]
+            self.focal = np.array([self.focal])
+        else:
+            self.focal = self.data["focal"]
         self.height, self.width = self.images.shape[1:3]
-        self.near = near
-        self.far = far
+
+        if "near" in self.data and "far" in self.data:
+            self.near = self.data["near"]
+            self.far = self.data["far"]
+        else:
+            self.near = near
+            self.far = far
 
         # convert 4*4 camera pose mat into origin camera pos + dir vector to indicate where the camera is pointing
-        self.cam_dirs = np.stack([np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self.poses])
-        self.cam_origins = self.poses[:, :3, -1]
+        # self.cam_dirs = np.stack([np.sum([0, 0, -1] * pose[:3, :3], axis=-1) for pose in self.poses])
+        # self.cam_origins = self.poses[:, :3, -1]
 
         if pos_embedder is not None:
             self.pos_embedder = pos_embedder
@@ -53,9 +64,20 @@ class NeRF_Data_Loader:
         self.n_training = n_training
         self.data_to_device(self.device, self.n_training)
 
-    def load_data(self, data_path: str) -> None:
-        # TODO M: load data from npz file or from folder
-        data = np.load(data_path)
+    def load_data(self, data_path: str, boundsfile=False) -> dict:
+        """Load data from npz or npy file.
+
+        Args:
+            data_path (str): directory to data file
+            boundsfile (bool, optional): False: npz, True: npy. Defaults to False.
+
+        Returns:
+            dict: dict containing images, poses, focal length, near and far clipping planes
+        """
+        if boundsfile:
+            data = load_npy_data(data_path)
+        else:
+            data = np.load(data_path)
         return data
 
     def data_to_device(self, device: torch.device, n_training: int = 100):
@@ -69,7 +91,7 @@ class NeRF_Data_Loader:
         self.validation_images = torch.from_numpy(self.data["images"][n_training:]).to(device)
         self.train_poses = torch.from_numpy(self.data["poses"][:n_training]).to(device)
         self.validation_poses = torch.from_numpy(self.data["poses"][n_training:]).to(device)
-        self.focal = torch.from_numpy(self.data["focal"]).to(device)
+        self.focal = torch.from_numpy(self.focal).to(device)
 
     def get_training_rays(self) -> torch.Tensor:
         """Generate a tensor of all rays o, d, rgb values for training.

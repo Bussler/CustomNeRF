@@ -245,6 +245,7 @@ def train(args: dict) -> bool:
         ) = init_models(
             device,
             args["data_path"],
+            args["poses_bounds"],
             args["near"],
             args["far"],
             args["n_training"],

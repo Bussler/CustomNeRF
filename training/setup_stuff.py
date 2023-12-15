@@ -18,6 +18,7 @@ from volume_handling.sampling import (
 def init_models(
     device: torch.device,
     data_path: str = "data/tiny_nerf_data.npz",
+    poses_bounds: bool = False,
     near: float = 2.0,
     far: float = 6.0,
     n_training: int = 100,
@@ -85,7 +86,7 @@ def init_models(
         d_viewdirs = None
 
     # Data Loader
-    data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, device, n_training, near, far)
+    data_loader = NeRF_Data_Loader(data_path, poses_bounds, encoder, encoder_viewdirs, device, n_training, near, far)
 
     # Samplers
     nerf_sampler_coarse = NeRF_Stratified_Sampler(
@@ -129,6 +130,7 @@ def init_models(
 def load_model(
     device: torch.device,
     data_path: str = "data/tiny_nerf_data.npz",
+    poses_bounds: bool = False,
     model_path: str = "experiments/test_exp/nerf.pt",
     fine_model_path: str = "experiments/test_exp/nerf-fine.pt",
     near: float = 2.0,
@@ -161,7 +163,7 @@ def load_model(
         d_viewdirs = None
 
     # Data Loader
-    data_loader = NeRF_Data_Loader(data_path, encoder, encoder_viewdirs, device, n_training, near, far)
+    data_loader = NeRF_Data_Loader(data_path, poses_bounds, encoder, encoder_viewdirs, device, n_training, near, far)
 
     # Samplers
     nerf_sampler_coarse = NeRF_Stratified_Sampler(
