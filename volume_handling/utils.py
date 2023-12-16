@@ -5,7 +5,7 @@ import imageio
 import numpy as np
 
 
-def load_npy_data(data_path: str) -> dict:
+def load_npy_data(data_path: str, factor=None) -> dict:
     """
     Loads the numpy bounds data from the given path.
 
@@ -16,6 +16,7 @@ def load_npy_data(data_path: str) -> dict:
 
     Args:
         data_path (str): The path to the folder with the images and numpy bounds data file.
+        factor (int, optional): The factor by which to minify the images. If not provided, the images will not be minified.
 
     Returns:
         dict: A dictionary containing the loaded data. The keys in the dictionary are:
@@ -26,7 +27,7 @@ def load_npy_data(data_path: str) -> dict:
             - 'near': The near value as a float.
             - 'far': The far value as a float.
     """
-    poses, bounds, imgs = _load_data(data_path)
+    poses, bounds, imgs = _load_data(data_path, factor=factor)
 
     print("Loaded", data_path)
 
@@ -104,17 +105,17 @@ def _minify(basedir, factors=[], resolutions=[]) -> None:
         print("Minifying", r, basedir)
 
         os.makedirs(imgdir)
-        check_output("cp {}/* {}".format(imgdir_orig, imgdir), shell=True)
+        check_output("copy {}\* {}".format(imgdir_orig, imgdir), shell=True)
 
         ext = imgs[0].split(".")[-1]
-        args = " ".join(["mogrify", "-resize", resizearg, "-format", "png", "*.{}".format(ext)])
+        args = " ".join(["magick", "mogrify", "-resize", resizearg, "-format", "png", "*.{}".format(ext)])
         print(args)
         os.chdir(imgdir)
         check_output(args, shell=True)
         os.chdir(wd)
 
         if ext != "png":
-            check_output("rm {}/*.{}".format(imgdir, ext), shell=True)
+            check_output("rm {}\*.{}".format(imgdir, ext), shell=True)
             print("Removed duplicates")
         print("Done")
 

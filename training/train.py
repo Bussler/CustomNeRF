@@ -246,6 +246,7 @@ def train(args: dict) -> bool:
             device,
             args["data_path"],
             args["poses_bounds"],
+            args["downsample_factor"],
             args["near"],
             args["far"],
             args["n_training"],

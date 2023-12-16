@@ -18,6 +18,7 @@ def infer(args: dict) -> bool:
         device,
         args["data_path"],
         args["poses_bounds"],
+        args["downsample_factor"],
         args["model_path"],
         args["fine_model_path"],
         args["near"],

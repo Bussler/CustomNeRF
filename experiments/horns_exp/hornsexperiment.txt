@@ -1,6 +1,7 @@
 expname = horns_exp_fullTraining
-data_path = "data/horns"
+data_path = "data\horns"
 poses_bounds = True
+downsample_factor = 4
 out_path = experiments/horns_exp/
 tensorboard_log_dir = tensorboard_runs/
 n_training = 55 # Number of images used for training, the rest are used for validation
@@ -39,7 +40,7 @@ one_image_per_step = False   # One image per gradient step (disables batching)
 chunksize = 16384           # Modify as needed to fit in GPU memory
 center_crop = True          # Crop the center of image (one_image_per_)
 center_crop_iters = 50      # Stop cropping center after this many epochs
-display_rate = 50          # Display test output every X epochs
+display_rate = 50          # Display test output every X epochs 
 model_storage_rate = 5001  # Store model params every X epochs
 
 # Early Stopping

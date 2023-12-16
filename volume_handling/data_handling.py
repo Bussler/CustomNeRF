@@ -14,6 +14,7 @@ class NeRF_Data_Loader:
         self,
         data_path="data/tiny_nerf_data.npz",
         poses_bounds=False,
+        downsample_factor=None,
         pos_embedder: Embedder = None,
         viewdir_embedder: Embedder = None,
         device: torch.device = torch.device("cpu"),
@@ -22,7 +23,7 @@ class NeRF_Data_Loader:
         far=6.0,
     ) -> None:
         # load data images
-        self.data = self.load_data(data_path, boundsfile=poses_bounds)
+        self.data = self.load_data(data_path, boundsfile=poses_bounds, downsample_factor=downsample_factor)
         self.images = self.data["images"]
         self.train_images = []
         self.validation_images = []
@@ -64,18 +65,19 @@ class NeRF_Data_Loader:
         self.n_training = n_training
         self.data_to_device(self.device, self.n_training)
 
-    def load_data(self, data_path: str, boundsfile=False) -> dict:
+    def load_data(self, data_path: str, boundsfile=False, downsample_factor=None) -> dict:
         """Load data from npz or npy file.
 
         Args:
             data_path (str): directory to data file
             boundsfile (bool, optional): False: npz, True: npy. Defaults to False.
+            downsampling_factor (int, optional): downsampling factor of the input images. Defaults to None.
 
         Returns:
             dict: dict containing images, poses, focal length, near and far clipping planes
         """
         if boundsfile:
-            data = load_npy_data(data_path)
+            data = load_npy_data(data_path, downsample_factor)
         else:
             data = np.load(data_path)
         return data

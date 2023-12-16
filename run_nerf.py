@@ -36,8 +36,12 @@ def config_parser_training() -> dict:
     parser.add_argument("--expname", type=str, required=True, help="name of your experiment; is required")
     parser.add_argument("--data_path", type=str, required=True, help="path to the trained dataset; is required")
     parser.add_argument(
-        "--poses_bounds", type=str2bool, default="False", help="path to the trained dataset; is required"
+        "--poses_bounds",
+        type=str2bool,
+        default="False",
+        help="defines whether poses and bounds are loaded present in the dir",
     )
+    parser.add_argument("--downsample_factor", type=int, default=1, help="Downsampling factor of the input images")
     parser.add_argument("--out_path", type=str, default="experiments/", help="output destination of your experiment")
     parser.add_argument(
         "--tensorboard_log_dir", type=str, default="tensorboard_runs/", help="output destination of tensorboard logs"
