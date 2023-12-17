@@ -90,9 +90,15 @@ class NeRF_Data_Loader:
             n_training (int, optional): how many training images to move. Defaults to 100.
         """
         self.train_images = torch.from_numpy(self.data["images"][:n_training]).to(device)
-        self.validation_images = torch.from_numpy(self.data["images"][n_training:]).to(device)
         self.train_poses = torch.from_numpy(self.data["poses"][:n_training]).to(device)
-        self.validation_poses = torch.from_numpy(self.data["poses"][n_training:]).to(device)
+
+        if n_training < self.data["images"].shape[0]:
+            self.validation_images = torch.from_numpy(self.data["images"][n_training:]).to(device)
+            self.validation_poses = torch.from_numpy(self.data["poses"][n_training:]).to(device)
+        else:
+            self.validation_images = torch.from_numpy(self.data["images"][0:1]).to(device)
+            self.validation_poses = torch.from_numpy(self.data["poses"][0:1]).to(device)
+
         self.focal = torch.from_numpy(self.focal).to(device)
 
     def get_training_rays(self) -> torch.Tensor:

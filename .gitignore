@@ -162,3 +162,5 @@ cython_debug/
 .vscode/
 tensorboard_runs/
 experiments/
+data/horns/images_*
+data/
