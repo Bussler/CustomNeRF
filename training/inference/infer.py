@@ -46,7 +46,7 @@ def infer(args: dict) -> bool:
         data_loader.train_poses[0:1].squeeze(0),
     )
     render_path = generate_circular_renderpath(
-        data_loader.train_poses[0:1].cpu(), data_loader.focal.cpu(), 120, 2, 0.1, 0.1
+        data_loader.train_poses[0:1].cpu(), data_loader.focal.cpu().item(), 120, 2, 0.01, 0.1
     )
     images = []
 

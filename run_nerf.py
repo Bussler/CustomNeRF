@@ -109,6 +109,10 @@ def config_parser_training() -> dict:
     )
     parser.add_argument("--n_restarts", type=int, default=10, help="Number of times to restart if training stalls")
 
+    # Inference
+    parser.add_argument("--model_path", type=str, default="", help="Saved model path")
+    parser.add_argument("--fine_model_path", type=str, default="", help="Saved fine model path")
+
     return parser.parse_args()
 
 
@@ -117,9 +121,7 @@ def main():
 
     if args["mode"] == "train":
         success = train(args)
-    if args["mode"] == "inference":
-        args["model_path"] = "experiments/test_exp/Iter_10002_nerf.pt"
-        args["fine_model_path"] = "experiments/test_exp/Iter_10002_nerf-fine.pt"
+    if args["mode"] == "infer":
         success = infer(args)
 
 
