@@ -48,3 +48,7 @@ model_storage_rate = 5001  # Store model params every X epochs
 warmup_iters = 100          # Number of iterations during warmup phase
 warmup_min_fitness = 10.0   # Min val PSNR to continue training at warmup_iters
 n_restarts = 10             # Number of times to restart if training stalls
+
+# Inference
+model_path = experiments/test_exp/nerf.pt
+fine_model_path = experiments/test_exp/nerf-fine.pt
